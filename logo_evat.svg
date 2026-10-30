@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="globeGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="40%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </radialGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.25"/>
+  <circle cx="100" cy="100" r="70" fill="url(#globeGrad)" filter="url(#glow)"/>
+  <path d="M55 85 Q70 70 90 78 Q110 65 125 80 Q140 95 130 115 Q115 130 95 125 Q70 120 55 105 Z" fill="#1e3a8a" opacity="0.55"/>
+  <path d="M120 55 Q140 50 155 70 Q160 90 145 100 Q130 95 120 80 Z" fill="#1e3a8a" opacity="0.45"/>
+  <ellipse cx="100" cy="100" rx="70" ry="22" fill="none" stroke="#60a5fa" stroke-width="0.8" opacity="0.35"/>
+  <ellipse cx="100" cy="100" rx="70" ry="45" fill="none" stroke="#60a5fa" stroke-width="0.6" opacity="0.25"/>
+  <path d="M100 30 L100 170" stroke="#60a5fa" stroke-width="0.6" opacity="0.3"/>
+  <path d="M30 100 L170 100" stroke="#60a5fa" stroke-width="0.6" opacity="0.3"/>
+  <ellipse cx="100" cy="100" rx="88" ry="28" fill="none" stroke="url(#ringGrad)" stroke-width="3.5" transform="rotate(-25 100 100)" filter="url(#glow)" opacity="0.95"/>
+  <ellipse cx="100" cy="100" rx="82" ry="22" fill="none" stroke="#38bdf8" stroke-width="1.5" transform="rotate(15 100 100)" opacity="0.7"/>
+  <circle cx="100" cy="100" r="8" fill="#f0f9ff" filter="url(#glow)"/>
+  <circle cx="100" cy="100" r="4" fill="#ffffff"/>
+  <circle cx="175" cy="85" r="3.5" fill="#38bdf8" filter="url(#glow)"/>
+  <circle cx="40" cy="130" r="2.5" fill="#10b981" filter="url(#glow)"/>
+</svg>
