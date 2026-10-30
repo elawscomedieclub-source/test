@@ -1,15 +1,13 @@
 {
   "name": "EVAT | ELAWS Quantum",
   "short_name": "EVAT",
+  "description": "EVAT Continuum — ELAWS Quantum. Communications, IA et outils pour tous.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#030712",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "logo_evat.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
+    { "src": "logo_evat.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }

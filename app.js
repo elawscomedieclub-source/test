@@ -252,8 +252,6 @@ function appliquerInfosProfil() {
     
     verifierEtSynchroniserContacts();
     afficherContacts();
-    assurerStructureJour();
-    majResumeJourDashboard();
 }
 
 function verifierEtSynchroniserContacts() {
@@ -372,259 +370,79 @@ function basculerEcouteVocaleIA() {
     recognition.start();
 }
 
-// ========== ELAWS GRAND PUBLIC + VIE QUOTIDIENNE + JOUR ==========
+// ========== ELAWS + VOIX + STYLE ==========
 let elawsBusy = false;
 let elawsHistory = [];
-let elawsMode = 'grand_public'; // grand_public | formation | chat
+let elawsVoixActive = localStorage.getItem('evat_voix') !== 'off';
 
 function echapperHtml(s) {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
 }
-function nettoyerReponseIA(texte) {
-    if (!texte) return texte;
-    let t = texte.trim();
-    t = t.replace(/^(ELAWS\s*(AI)?\s*[:\-–—]\s*)/i, '');
-    t = t.replace(/^(Réponse\s*[:\-–—]\s*)/i, '');
-    const ban = [
-        /^j'ai bien (reçu|compris|noté)[^.!]*[.!]?\s*/i,
-        /^concernant (ta|votre|la) question[^.!]*[.!]?\s*/i,
-        /^tu (as|m'as) (demandé|posé)[^.!]*[.!]?\s*/i,
-        /^analyse (instantanée|de)[^.!]*[.!]?\s*/i
-    ];
-    ban.forEach(re => { t = t.replace(re, ''); });
-    return t.trim() || texte.trim();
+function nettoyerReponseIA(t) {
+    if (!t) return t;
+    let x = t.trim().replace(/^(ELAWS\s*(AI)?\s*[:\-–—]\s*)/i, '').replace(/^(Réponse\s*[:\-–—]\s*)/i, '');
+    [/^j'ai bien (reçu|compris|noté)[^.!]*[.!]?\s*/i, /^concernant (ta|votre|la) question[^.!]*[.!]?\s*/i, /^tu (as|m'as) (demandé|posé)[^.!]*[.!]?\s*/i].forEach(re => { x = x.replace(re, ''); });
+    return x.trim() || t.trim();
 }
 
-function assurerStructureJour() {
-    if (!utilisateur) return;
-    if (!utilisateur.vieQuotidienne) {
-        utilisateur.vieQuotidienne = {
-            budget: { solde: 0, notes: '' },
-            famille: [],
-            demarches: [],
-            astuces: []
-        };
+function basculerVoixElaws() {
+    elawsVoixActive = !elawsVoixActive;
+    localStorage.setItem('evat_voix', elawsVoixActive ? 'on' : 'off');
+    const btn = document.getElementById('btnSpeakElaws');
+    if (btn) {
+        btn.textContent = elawsVoixActive ? '🔊' : '🔇';
+        btn.title = elawsVoixActive ? 'Réponse vocale activée' : 'Réponse vocale désactivée';
     }
-    if (!utilisateur.tableauJour) {
-        utilisateur.tableauJour = { date: '', pro: '', perso: '', formation: '' };
-    }
+    if (!elawsVoixActive && window.speechSynthesis) window.speechSynthesis.cancel();
+    else parlerElaws(elawsVoixActive ? 'Réponse vocale activée.' : 'Réponse vocale désactivée.');
 }
 
-function sauvegarderProfilLocal() {
-    if (utilisateur) localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
+function parlerElaws(texte) {
+    if (!elawsVoixActive || !texte || !window.speechSynthesis) return;
+    try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(texte);
+        u.lang = 'fr-FR';
+        u.rate = 1.02;
+        u.pitch = 1;
+        u.volume = 1;
+        const voices = window.speechSynthesis.getVoices();
+        const fr = voices.find(v => /fr(-|_|$)/i.test(v.lang) && /female|google|thomas|marie|julie|hortense/i.test(v.name))
+            || voices.find(v => /fr(-|_|$)/i.test(v.lang))
+            || null;
+        if (fr) u.voice = fr;
+        window.speechSynthesis.speak(u);
+    } catch (e) { console.warn('TTS', e); }
 }
 
-// ----- Tableau de bord du jour -----
-function dateDuJourISO() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function afficherTableauJour() {
-    assurerStructureJour();
-    const el = document.getElementById('tableauJourContainer');
-    if (!el || !utilisateur) return;
-    const tj = utilisateur.tableauJour;
-    if (tj.date !== dateDuJourISO()) {
-        // nouveau jour : on garde les textes mais on marque la date
-        tj.date = dateDuJourISO();
-        sauvegarderProfilLocal();
-    }
-    el.innerHTML = `
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">Aujourd'hui · ${tj.date}</div>
-        <label style="font-size:11px;">1. Action pro / travail</label>
-        <input type="text" id="jourPro" class="input" placeholder="Ex: Appeler 3 clients" value="${echapperHtml(tj.pro || '')}">
-        <label style="font-size:11px;">2. Action perso / vie quotidienne</label>
-        <input type="text" id="jourPerso" class="input" placeholder="Ex: Payer facture / courses" value="${echapperHtml(tj.perso || '')}">
-        <label style="font-size:11px;">3. Formation / progression</label>
-        <input type="text" id="jourFormation" class="input" placeholder="Ex: 15 min leçon prix & marge" value="${echapperHtml(tj.formation || '')}">
-        <button onclick="sauvegarderTableauJour()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669); margin-top:4px;">💾 Enregistrer ma journée</button>
-        <button onclick="demanderConseilJourElaws()" class="btn-action" style="margin-top:8px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">🤖 ELAWS : m'aider à prioriser</button>
-    `;
-}
-
-function sauvegarderTableauJour() {
-    assurerStructureJour();
-    utilisateur.tableauJour = {
-        date: dateDuJourISO(),
-        pro: (document.getElementById('jourPro')?.value || '').trim(),
-        perso: (document.getElementById('jourPerso')?.value || '').trim(),
-        formation: (document.getElementById('jourFormation')?.value || '').trim()
-    };
-    sauvegarderProfilLocal();
-    const dash = document.getElementById('dashResumeJour');
-    if (dash) majResumeJourDashboard();
-    alert('Journée enregistrée.');
-}
-
-function majResumeJourDashboard() {
-    const dash = document.getElementById('dashResumeJour');
-    if (!dash || !utilisateur) return;
-    assurerStructureJour();
-    const tj = utilisateur.tableauJour || {};
-    const lignes = [];
-    if (tj.pro) lignes.push('💼 ' + tj.pro);
-    if (tj.perso) lignes.push('🏠 ' + tj.perso);
-    if (tj.formation) lignes.push('📚 ' + tj.formation);
-    if (lignes.length === 0) {
-        dash.innerHTML = `<p style="font-size:12px; color:var(--text-secondary); margin:0;">Définis tes 3 actions du jour pour avancer clairement.</p>
-        <button onclick="switchTab('vie-quotidienne')" class="btn-action" style="margin-top:8px; font-size:12px;">Ouvrir le tableau du jour</button>`;
-    } else {
-        dash.innerHTML = `<div style="font-size:12.5px; line-height:1.5;">${lignes.map(l => echapperHtml(l)).join('<br>')}</div>
-        <button onclick="switchTab('vie-quotidienne')" class="btn-action" style="margin-top:8px; font-size:11px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Modifier</button>`;
-    }
-}
-
-function demanderConseilJourElaws() {
-    assurerStructureJour();
-    const pro = document.getElementById('jourPro')?.value || utilisateur.tableauJour.pro || '';
-    const perso = document.getElementById('jourPerso')?.value || utilisateur.tableauJour.perso || '';
-    const form = document.getElementById('jourFormation')?.value || utilisateur.tableauJour.formation || '';
-    elawsMode = 'grand_public';
-    switchTab('elaws-ia');
-    const input = document.getElementById('elawsInput');
-    if (input) {
-        input.value = `Voici mes 3 actions du jour — pro: «${pro||'vide'}», perso: «${perso||'vide'}», formation: «${form||'vide'}». Aide-moi à prioriser et donne 3 conseils concrets pour réussir cette journée. Réponse courte et simple.`;
-        poserQuestionElaws();
-    }
-}
-
-// ----- Vie quotidienne -----
-function afficherVieQuotidienne() {
-    assurerStructureJour();
-    afficherTableauJour();
-    const vq = utilisateur.vieQuotidienne;
-    const budgetEl = document.getElementById('vqBudgetSolde');
-    const notesEl = document.getElementById('vqBudgetNotes');
-    if (budgetEl) budgetEl.value = vq.budget?.solde ?? '';
-    if (notesEl) notesEl.value = vq.budget?.notes || '';
-
-    const fam = document.getElementById('vqFamilleListe');
-    if (fam) {
-        if (!vq.famille.length) fam.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">Aucun contact famille / confiance pour l’instant.</p>';
-        else fam.innerHTML = vq.famille.map((c, i) =>
-            `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid var(--border-color); border-radius:8px; margin-bottom:6px;">
-                <div><strong style="font-size:12.5px;">${echapperHtml(c.nom)}</strong><div style="font-size:11px; color:var(--text-secondary);">${echapperHtml(c.tel)} · ${echapperHtml(c.lien || '')}</div></div>
-                <div style="display:flex; gap:4px;">
-                    <button onclick="preparerAppel('${echapperHtml(c.tel)}')" class="btn-action" style="width:auto; padding:5px 8px; font-size:10px; background:var(--success);">📞</button>
-                    <button onclick="retirerContactFamille(${i})" class="btn-action" style="width:auto; padding:5px 8px; font-size:10px; background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.4); box-shadow:none;">✕</button>
-                </div>
-            </div>`
-        ).join('');
-    }
-
-    const dem = document.getElementById('vqDemarchesListe');
-    if (dem) {
-        if (!vq.demarches.length) dem.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">Aucune démarche en cours.</p>';
-        else dem.innerHTML = vq.demarches.map((d, i) =>
-            `<div style="padding:8px; border:1px solid var(--border-color); border-radius:8px; margin-bottom:6px;">
-                <strong style="font-size:12.5px;">${d.fait ? '✅ ' : '⏳ '}${echapperHtml(d.titre)}</strong>
-                ${d.detail ? `<div style="font-size:11px; color:var(--text-secondary);">${echapperHtml(d.detail)}</div>` : ''}
-                <div style="margin-top:6px; display:flex; gap:4px;">
-                    <button onclick="toggleDemarche(${i})" class="btn-action" style="width:auto; padding:4px 8px; font-size:10px;">${d.fait ? 'Réouvrir' : 'Fait'}</button>
-                    <button onclick="retirerDemarche(${i})" class="btn-action" style="width:auto; padding:4px 8px; font-size:10px; background:rgba(248,113,113,0.15); color:#f87171; box-shadow:none;">Suppr.</button>
-                </div>
-            </div>`
-        ).join('');
-    }
-}
-
-function sauvegarderBudgetVQ() {
-    assurerStructureJour();
-    const solde = parseFloat(document.getElementById('vqBudgetSolde')?.value || '0') || 0;
-    const notes = (document.getElementById('vqBudgetNotes')?.value || '').trim();
-    utilisateur.vieQuotidienne.budget = { solde, notes };
-    sauvegarderProfilLocal();
-    alert('Budget enregistré.');
-}
-
-function ajouterContactFamille() {
-    assurerStructureJour();
-    const nom = prompt('Nom :');
-    if (!nom) return;
-    const tel = prompt('Téléphone :');
-    if (!tel) return;
-    const lien = prompt('Lien (conjoint, parent, ami de confiance…) :', 'Famille') || 'Famille';
-    utilisateur.vieQuotidienne.famille.push({ nom: nom.trim(), tel: tel.replace(/\s+/g,'').trim(), lien: lien.trim() });
-    sauvegarderProfilLocal();
-    afficherVieQuotidienne();
-}
-
-function retirerContactFamille(i) {
-    assurerStructureJour();
-    utilisateur.vieQuotidienne.famille.splice(i, 1);
-    sauvegarderProfilLocal();
-    afficherVieQuotidienne();
-}
-
-function ajouterDemarche() {
-    assurerStructureJour();
-    const titre = prompt('Démarche (ex: Carte d\'identité, inscription école, facture…) :');
-    if (!titre) return;
-    const detail = prompt('Détail / prochain pas :', '') || '';
-    utilisateur.vieQuotidienne.demarches.unshift({ titre: titre.trim(), detail: detail.trim(), fait: false });
-    sauvegarderProfilLocal();
-    afficherVieQuotidienne();
-}
-
-function toggleDemarche(i) {
-    assurerStructureJour();
-    const d = utilisateur.vieQuotidienne.demarches[i];
-    if (d) d.fait = !d.fait;
-    sauvegarderProfilLocal();
-    afficherVieQuotidienne();
-}
-
-function retirerDemarche(i) {
-    assurerStructureJour();
-    utilisateur.vieQuotidienne.demarches.splice(i, 1);
-    sauvegarderProfilLocal();
-    afficherVieQuotidienne();
-}
-
-function astuceVQ(theme) {
-    elawsMode = 'grand_public';
-    switchTab('elaws-ia');
-    const input = document.getElementById('elawsInput');
-    const prompts = {
-        budget: 'Donne 5 astuces simples pour gérer un petit budget familial au quotidien. Court, pratique, sans jargon.',
-        demarches: 'Explique comment bien préparer une démarche administrative (papiers, file, questions à poser). Conseils universels, simples.',
-        famille: 'Conseils concrets pour mieux s\'organiser en famille (tâches, communication, temps). Réponse courte.',
-        sante: 'Donne des gestes de prévention santé au quotidien (hygiène, sommeil, hydratation, quand consulter). Rappelle que tu ne remplaces pas un médecin.',
-        securite: 'Astuces de sécurité personnelle au quotidien (téléphone, trajets, argent, arnaques). Simple et prudent.'
-    };
-    if (input) {
-        input.value = prompts[theme] || prompts.budget;
-        poserQuestionElaws();
-    }
+// Charger les voix (certains navigateurs les chargent async)
+if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => { speechSynthesis.getVoices(); };
 }
 
 function reponseLocaleElaws(question, profil) {
+    const prenom = profil?.nom ? profil.nom.split(' ')[0] : '';
     const q = (question || '').toLowerCase();
-    if (/bonjour|salut|hello|hi/.test(q)) return 'Salut. Dis-moi ce dont tu as besoin aujourd\'hui — travail, maison, budget, démarches…';
-    if (/médecin|diagnostic|maladie grave|ordonnance/.test(q)) return 'Pour la santé, je peux donner des infos générales de prévention. Pour un diagnostic ou un traitement, vois un professionnel de santé.';
-    if (/avocat|plainte|juridique|loi exacte/.test(q)) return 'Je peux t\'orienter sur les étapes générales d\'une démarche. Pour un conseil juridique précis, adresse-toi à un professionnel ou un service compétent local.';
-    if (/budget|argent|épargne/.test(q)) return 'Règle simple : note entrées et sorties. Paye d\'abord le vital (nourriture, logement, transport). Mets de côté même un petit montant. Évite les dettes pour le superflu.';
-    return 'Je suis en mode local. Reformule ta question simplement, ou réessaie avec le réseau pour une réponse plus complète. En attendant : utilise le Tableau du jour et Vie quotidienne.';
+    if (/bonjour|salut|hello|hi/.test(q)) return (prenom ? prenom + ', ' : '') + 'je t\'écoute. Que veux-tu faire avancer aujourd\'hui ?';
+    if (/merci|thanks/.test(q)) return 'Avec plaisir. Je reste disponible.';
+    if (/qui es|c\'est quoi elaws/.test(q)) return 'Je suis ELAWS, l\'assistant d\'EVAT Continuum. Questions, organisation, travail, quotidien — demande simplement.';
+    if (/contact|appel|voip/.test(q)) return 'Utilise les onglets Contacts et Appels pour joindre quelqu\'un en VoIP.';
+    return 'Je n\'ai pas le réseau pour une réponse complète. Reformule ou réessaie dans un instant.';
 }
 
 async function appelerIAMondiale(question, profil) {
     const prenom = profil?.nom ? profil.nom.split(' ')[0] : 'toi';
     const metier = profil?.metier || '';
-    const systemPrompt = `Tu es ELAWS, assistant grand public de l'application EVAT Continuum.
-RÈGLES STRICTES :
-- Réponds UNIQUEMENT avec ta réponse utile. Ne répète JAMAIS la question.
-- Langage simple, humain, clair. Accessible à tous.
-- 4 à 8 phrases ou étapes courtes, sauf demande contraire.
-- Tu aides au quotidien : travail, budget, famille, démarches, organisation, apprentissage pratique.
-- SANTÉ : infos générales de prévention seulement. Ne pose JAMAIS de diagnostic et ne prescris pas. Invite à consulter un professionnel si besoin.
-- JURIDIQUE / ARGENT RISQUÉ : reste général, prudent, pas de conseil absolu. Oriente vers services compétents si nécessaire.
-- Pas de formules robotiques (« j'ai bien reçu », « concernant ta question »).
-Utilisateur : ${prenom}${metier ? ', activité : ' + metier : ''}.`;
+    const systemPrompt = `Tu es ELAWS, assistant d'EVAT Continuum (ELAWS Quantum).
+Règles: réponds UNIQUEMENT le contenu utile, ne répète jamais la question, ton humain et clair, 3 à 8 phrases.
+Santé: prévention générale seulement, pas de diagnostic. Juridique: reste général.
+Utilisateur: ${prenom}${metier ? ', activité: ' + metier : ''}.`;
 
     const messages = [{ role: 'system', content: systemPrompt }];
-    elawsHistory.slice(-8).forEach(m => messages.push(m));
+    elawsHistory.slice(-6).forEach(m => messages.push(m));
     messages.push({ role: 'user', content: question });
 
     try {
@@ -638,8 +456,7 @@ Utilisateur : ${prenom}${metier ? ', activité : ' + metier : ''}.`;
         });
         clearTimeout(t);
         if (res.ok) {
-            let text = (await res.text()).trim();
-            text = nettoyerReponseIA(text);
+            let text = nettoyerReponseIA((await res.text()).trim());
             if (text.length > 3) return text;
         }
     } catch (e) {}
@@ -650,8 +467,7 @@ Utilisateur : ${prenom}${metier ? ', activité : ' + metier : ''}.`;
         const res2 = await fetch('https://text.pollinations.ai/' + prompt + '?model=openai', { signal: ctrl2.signal });
         clearTimeout(t2);
         if (res2.ok) {
-            let text2 = (await res2.text()).trim();
-            text2 = nettoyerReponseIA(text2);
+            let text2 = nettoyerReponseIA((await res2.text()).trim());
             if (text2.length > 3) return text2;
         }
     } catch (e) {}
@@ -664,24 +480,88 @@ async function poserQuestionElaws() {
     if (!question || !utilisateur || elawsBusy) return;
     const chatBox = document.getElementById('elawsChatBox');
     if (!chatBox) return;
+
     elawsBusy = true;
     chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; text-align:right;"><strong style="color:var(--success); font-size:12px;">👤 ${echapperHtml(utilisateur.nom)}</strong><p style="margin:4px 0 0 0; font-size:12.5px;">${echapperHtml(question)}</p></div>`;
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
+
     const loadingId = 'elaws-load-' + Date.now();
-    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="font-size:12px; margin:6px 0 0; color:var(--text-secondary);">Réflexion…</p></div>`;
+    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(62,203,255,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="font-size:12px; margin:6px 0 0; color:var(--text-secondary);">Réflexion…</p></div>`;
+
     let reponse = '';
     try { reponse = await appelerIAMondiale(question, utilisateur); }
     catch (e) { reponse = reponseLocaleElaws(question, utilisateur); }
+
     elawsHistory.push({ role: 'user', content: question });
     elawsHistory.push({ role: 'assistant', content: reponse });
     if (elawsHistory.length > 20) elawsHistory = elawsHistory.slice(-16);
-    const html = `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="margin:4px 0 0; font-size:12.5px; line-height:1.5; white-space:pre-wrap;">${echapperHtml(reponse)}</p></div>`;
+
+    const html = `<div style="background:rgba(62,203,255,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="margin:4px 0 0; font-size:12.5px; line-height:1.5; white-space:pre-wrap;">${echapperHtml(reponse)}</p>
+    <button onclick="parlerElaws(${JSON.stringify(reponse)})" class="btn-action speak-btn" style="width:auto; padding:4px 10px; font-size:10px; margin-top:8px;">🔊 Écouter</button></div>`;
     const el = document.getElementById(loadingId);
     if (el) el.outerHTML = html; else chatBox.innerHTML += html;
     chatBox.scrollTop = chatBox.scrollHeight;
     elawsBusy = false;
+
+    // Réponse audible automatique
+    parlerElaws(reponse);
 }
+
+// Particules quantiques
+(function initParticles() {
+    const canvas = document.getElementById('particles-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let particles = [], w = 0, h = 0, animId = null;
+    function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+    function create() {
+        const n = Math.min(50, Math.floor((w * h) / 18000));
+        particles = [];
+        for (let i = 0; i < n; i++) {
+            particles.push({
+                x: Math.random() * w, y: Math.random() * h,
+                r: Math.random() * 2 + 0.4,
+                vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
+                a: Math.random() * 0.45 + 0.12
+            });
+        }
+    }
+    function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+            if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(62,203,255,' + p.a + ')'; ctx.fill();
+            for (let j = i + 1; j < particles.length; j++) {
+                const q = particles[j];
+                const dx = p.x - q.x, dy = p.y - q.y, d = Math.sqrt(dx * dx + dy * dy);
+                if (d < 110) {
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+                    ctx.strokeStyle = 'rgba(62,203,255,' + (0.1 * (1 - d / 110)) + ')';
+                    ctx.lineWidth = 0.6; ctx.stroke();
+                }
+            }
+        }
+        animId = requestAnimationFrame(draw);
+    }
+    function start() { resize(); create(); if (animId) cancelAnimationFrame(animId); draw(); }
+    window.addEventListener('resize', () => { resize(); create(); });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
+})();
+
+// Sync bouton voix au chargement
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnSpeakElaws');
+    if (btn) {
+        btn.textContent = elawsVoixActive ? '🔊' : '🔇';
+        btn.title = elawsVoixActive ? 'Réponse vocale activée' : 'Réponse vocale désactivée';
+    }
+});
 
 function toggleMenu(e) {
     if(e) { e.stopPropagation(); e.preventDefault(); }
@@ -714,8 +594,6 @@ function switchTab(tabId) {
     fermerTousLesMenus();
 
     if(tabId === 'contacts') afficherContacts();
-    if(tabId === 'vie-quotidienne') afficherVieQuotidienne();
-    if(tabId === 'dashboard') majResumeJourDashboard();
     if(tabId === 'map') {
         setTimeout(() => {
             if(!mapInstance) {
@@ -1151,7 +1029,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     afficherNotesBlocNotes();
     afficherMessagesLocaux();
-    if (utilisateur) { assurerStructureJour(); majResumeJourDashboard(); }
 });
 
 async function demanderPermissionsEtActiverProfil() {
