@@ -80,9 +80,8 @@ io.on('connection', (socket) => {
     socket.on('ai_query', async (data, callback) => {
         try {
             const question = data?.question || '';
-            const nom = data?.nom || 'utilisateur';
-            // Proxy vers Pollinations si le client ne peut pas y accéder directement
-            const systemPrompt = `Tu es ELAWS AI, assistant d'EVAT Continuum. Réponds clairement et utilement en français (ou dans la langue de la question). Utilisateur: ${nom}.`;
+            const nom = data?.nom || 'toi';
+            const systemPrompt = `Tu es ELAWS. Réponds comme un humain intelligent et direct. Ne répète jamais la question. Pas de formules du type "j'ai bien reçu". Va à l'essentiel, dans la langue de l'utilisateur. L'utilisateur s'appelle ${nom}.`;
             const res = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -96,10 +95,8 @@ io.on('connection', (socket) => {
             });
             if (res.ok) {
                 const text = await res.text();
-                if (typeof callback === 'function') callback({ reponse: text.trim() });
-            } else {
-                if (typeof callback === 'function') callback({ reponse: null });
-            }
+                if (typeof callback === 'function') callback({ reponse: (text || '').trim() });
+            } else if (typeof callback === 'function') callback({ reponse: null });
         } catch (err) {
             console.log('AI proxy error:', err.message);
             if (typeof callback === 'function') callback({ reponse: null });
