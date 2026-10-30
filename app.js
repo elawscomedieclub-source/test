@@ -252,6 +252,8 @@ function appliquerInfosProfil() {
     
     verifierEtSynchroniserContacts();
     afficherContacts();
+    assurerStructureJour();
+    majResumeJourDashboard();
 }
 
 function verifierEtSynchroniserContacts() {
@@ -370,229 +372,17 @@ function basculerEcouteVocaleIA() {
     recognition.start();
 }
 
-// ========== ELAWS — FORMATION PRATIQUE ==========
+// ========== ELAWS GRAND PUBLIC + VIE QUOTIDIENNE + JOUR ==========
 let elawsBusy = false;
 let elawsHistory = [];
-let elawsMode = 'chat'; // 'chat' | 'formation'
-
-const PARCOURS_FORMATION = {
-    commerce: {
-        titre: 'Commerce & Vente',
-        modules: [
-            { id: 'c1', titre: 'Accueillir et comprendre le client', duree: '10 min',
-              lecon: '1) Saluez clairement.\n2) Demandez le besoin en une phrase ouverte (« Qu\'est-ce que vous cherchez aujourd\'hui ? »).\n3) Reformulez pour confirmer.\n4) Proposez 1 à 2 options max, avec prix et avantage.\n5) Concluez : paiement, sac, remerciement.\n\nExercice : écrivez votre phrase d\'accueil + 2 questions ouvertes pour votre activité.',
-              exercice: 'Écris ta phrase d\'accueil et 2 questions pour découvrir le besoin client.' },
-            { id: 'c2', titre: 'Fixer un prix et une marge', duree: '12 min',
-              lecon: 'Prix de vente = coût + marge.\n- Coût : achat + transport + pertes éventuelles.\n- Marge : ce qui paie ton temps et ton profit.\nExemple : coût 700, marge 30% → prix ≈ 1000.\n\nRègle simple : ne vends jamais sous ton coût total.\n\nExercice : prends 3 produits, calcule coût, marge 25%, prix de vente.',
-              exercice: 'Calcule le prix de 3 produits avec 25% de marge.' },
-            { id: 'c3', titre: 'Fidéliser sans budget marketing', duree: '10 min',
-              lecon: '1) Qualité constante.\n2) Souvenir du client (prénom, préférence).\n3) Petit suivi après achat si possible.\n4) Offre « client régulier » simple (réduction ou bonus).\n5) Demande une recommandation orale.\n\nExercice : définis 1 geste de fidélisation que tu peux faire dès demain.',
-              exercice: 'Quel geste de fidélisation démarres-tu demain ?' }
-        ]
-    },
-    agri: {
-        titre: 'Agriculture pratique',
-        modules: [
-            { id: 'a1', titre: 'Planifier une saison', duree: '15 min',
-              lecon: '1) Note la période des pluies / sèche chez toi.\n2) Choisis 1 à 2 cultures prioritaires.\n3) Calcule semences, main-d\'œuvre, engrais/compost.\n4) Prépare un calendrier : préparation sol → semis → entretien → récolte.\n5) Garde 10–15% du budget pour imprévus.\n\nExercice : écris ton calendrier pour les 3 prochains mois.',
-              exercice: 'Calendrier cultural des 3 prochains mois.' },
-            { id: 'a2', titre: 'Suivre coûts et récolte', duree: '10 min',
-              lecon: 'Chaque semaine : note dépenses (intrants, transport, aide).\nÀ la récolte : quantité + prix de vente.\nBénéfice ≈ ventes − dépenses.\n\nSans ces chiffres, tu travailles à l\'aveugle.\n\nExercice : liste tes 5 dernières dépenses liées à la production.',
-              exercice: 'Liste 5 dépenses récentes de ton exploitation.' }
-        ]
-    },
-    artisan: {
-        titre: 'Artisanat & chantiers',
-        modules: [
-            { id: 'ar1', titre: 'Devis clair en 5 lignes', duree: '12 min',
-              lecon: 'Un devis crédible contient :\n1) Description du travail\n2) Main-d\'œuvre (jours × tarif)\n3) Matériaux (liste + prix)\n4) Total + délai\n5) Conditions (acompte, reste à la fin)\n\nExercice : rédige un devis pour un petit chantier type de ton métier.',
-              exercice: 'Rédige un mini-devis pour un job typique.' },
-            { id: 'ar2', titre: 'Organiser un chantier', duree: '10 min',
-              lecon: 'Avant : matériaux complets, outils, accord client.\nPendant : une étape à la fois, photo si possible, note les imprévus.\nAprès : contrôle qualité avec le client, paiement, entretien éventuel.\n\nExercice : checklist « avant de commencer » pour ton prochain job.',
-              exercice: 'Ta checklist avant démarrage chantier.' }
-        ]
-    },
-    admin: {
-        titre: 'Administration efficace',
-        modules: [
-            { id: 'ad1', titre: 'Prioriser sa journée', duree: '8 min',
-              lecon: 'Règle des 3 : chaque matin, choisis 3 tâches importantes seulement.\n1 critique, 1 importante, 1 utile.\nLe reste = bonus.\nCoupe les distractions pendant 25 min (focus), puis 5 min de pause.\n\nExercice : écris tes 3 priorités pour demain.',
-              exercice: '3 priorités pour demain.' },
-            { id: 'ad2', titre: 'Écrire un message pro', duree: '10 min',
-              lecon: 'Structure :\n- Salutation\n- Pourquoi tu écris (1 phrase)\n- Demande claire ou information\n- Remerciement + signature\n\nCourt = lu. Long = ignoré.\n\nExercice : rédige un message de 5–7 lignes pour une demande réelle.',
-              exercice: 'Rédige un court message professionnel.' }
-        ]
-    },
-    tech: {
-        titre: 'Tech & numérique pratique',
-        modules: [
-            { id: 't1', titre: 'Résoudre un problème étape par étape', duree: '12 min',
-              lecon: '1) Reproduire le bug.\n2) Noter le message d\'erreur exact.\n3) Isoler : quel changement l\'a causé ?\n4) Tester une hypothèse à la fois.\n5) Documenter la solution en 2 lignes.\n\nExercice : décris un bug récent et ta méthode de résolution.',
-              exercice: 'Décris un bug et comment tu l\'as (ou vas le) résoudre.' },
-            { id: 't2', titre: 'Livrer une petite fonctionnalité', duree: '15 min',
-              lecon: 'Découpe : objectif utilisateur → critères de « terminé » → tâches techniques → test manuel → livraison.\nNe commence pas à coder sans critère de fin.\n\nExercice : prends une idée et écris 3 critères « c\'est terminé quand… ».',
-              exercice: '3 critères de fin pour une petite feature.' }
-        ]
-    },
-    entrepreneur: {
-        titre: 'Entrepreneuriat de terrain',
-        modules: [
-            { id: 'e1', titre: 'Offre claire en une phrase', duree: '10 min',
-              lecon: 'Formule : J\'aide [qui] à [résultat] grâce à [ton produit/service].\nExemple : « J\'aide les petites boutiques à suivre leurs ventes grâce à un carnet simple. »\nSi tu ne peux pas le dire clairement, le client ne comprendra pas.\n\nExercice : écris ta phrase d\'offre.',
-              exercice: 'Ta phrase d\'offre en une ligne.' },
-            { id: 'e2', titre: 'Trésorerie de base', duree: '12 min',
-              lecon: 'Chaque semaine : entrées, sorties, solde.\nSépare argent business et argent perso si possible.\nGarde une réserve pour 2–4 semaines de charges.\n\nExercice : estime entrées et sorties du mois en cours.',
-              exercice: 'Estime entrées / sorties de ce mois.' }
-        ]
-    },
-    education: {
-        titre: 'Transmission & formation',
-        modules: [
-            { id: 'ed1', titre: 'Structurer une séance', duree: '12 min',
-              lecon: '1) Objectif (ce que l\'apprenant saura faire).\n2) Accroche 2 min.\n3) Activité principale.\n4) Mise en pratique.\n5) Feedback court.\n\nExercice : plan d\'une séance de 30 min sur un sujet que tu maîtrises.',
-              exercice: 'Plan d\'une séance de 30 minutes.' }
-        ]
-    },
-    general: {
-        titre: 'Compétences de base',
-        modules: [
-            { id: 'g1', titre: 'Apprendre en faisant', duree: '8 min',
-              lecon: 'Cycle : observer → essayer → noter ce qui marche → recommencer.\n15 minutes de pratique valent mieux qu\'une heure de lecture passive.\n\nExercice : choisis une compétence et définis une pratique de 15 min pour aujourd\'hui.',
-              exercice: 'Ta pratique de 15 min aujourd\'hui.' },
-            { id: 'g2', titre: 'Communiquer clairement', duree: '10 min',
-              lecon: 'Dis : qui, quoi, quand, combien / résultat attendu.\nÉvite les messages flous (« on verra », « bientôt »).\n\nExercice : réécris un message flou en message clair.',
-              exercice: 'Transforme un message flou en message clair.' }
-        ]
-    }
-};
-
-function detecterParcoursFormation(metier) {
-    const m = (metier || '').toLowerCase();
-    if (/commerc|vente|vendeur|boutique|magasin/.test(m)) return 'commerce';
-    if (/agri|élev|ferme|culture|pêche/.test(m)) return 'agri';
-    if (/artisan|maçonn|plomb|électric|menuis|btp|mécanicien|chantier/.test(m)) return 'artisan';
-    if (/admin|secrét|comptable|bureau|rh|assistant/.test(m)) return 'admin';
-    if (/dev|info|tech|program|software|réseau|data|ingénieur/.test(m)) return 'tech';
-    if (/entrepr|business|startup|freelance|commerçant/.test(m)) return 'entrepreneur';
-    if (/enseign|prof|formateur|éduc|coach|tuteur/.test(m)) return 'education';
-    return 'general';
-}
-
-function getProgressionFormation() {
-    if (!utilisateur) return {};
-    if (!utilisateur.formation) utilisateur.formation = { termines: [], notes: {} };
-    if (!Array.isArray(utilisateur.formation.termines)) utilisateur.formation.termines = [];
-    return utilisateur.formation;
-}
-
-function sauvegarderFormation() {
-    if (!utilisateur) return;
-    localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
-}
-
-function afficherFormationPratique() {
-    const box = document.getElementById('formationContainer');
-    if (!box || !utilisateur) return;
-    const key = detecterParcoursFormation(utilisateur.metier);
-    const parcours = PARCOURS_FORMATION[key] || PARCOURS_FORMATION.general;
-    const prog = getProgressionFormation();
-    const total = parcours.modules.length;
-    const done = parcours.modules.filter(m => prog.termines.includes(m.id)).length;
-    const pct = total ? Math.round((done / total) * 100) : 0;
-
-    let html = `<div style="margin-bottom:12px;">
-        <strong style="color:var(--accent);">📚 ${parcours.titre}</strong>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Adapté à : ${utilisateur.metier || 'votre activité'} · ${done}/${total} modules (${pct}%)</div>
-        <div style="height:6px; background:rgba(56,189,248,0.15); border-radius:4px; margin-top:8px; overflow:hidden;">
-            <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,#0ea5e9,#34d399); border-radius:4px;"></div>
-        </div>
-    </div>`;
-
-    parcours.modules.forEach((mod, i) => {
-        const ok = prog.termines.includes(mod.id);
-        html += `<div style="border:1px solid var(--border-color); border-radius:12px; padding:12px; margin-bottom:8px; background:rgba(2,6,23,0.35);">
-            <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
-                <div>
-                    <strong style="font-size:13px;">${ok ? '✅ ' : (i + 1) + '. '}${mod.titre}</strong>
-                    <div style="font-size:11px; color:var(--text-secondary);">${mod.duree}</div>
-                </div>
-            </div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
-                <button onclick="lancerModuleFormation('${key}','${mod.id}')" class="btn-action" style="width:auto; padding:8px 12px; font-size:11px;">Lire & pratiquer</button>
-                <button onclick="demanderCoachElaws('${key}','${mod.id}')" class="btn-action" style="width:auto; padding:8px 12px; font-size:11px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Coach ELAWS</button>
-                ${!ok ? `<button onclick="marquerModuleTermine('${mod.id}')" class="btn-action" style="width:auto; padding:8px 12px; font-size:11px; background:linear-gradient(135deg,#10b981,#059669);">Marquer terminé</button>` : ''}
-            </div>
-        </div>`;
-    });
-
-    html += `<p style="font-size:11px; color:var(--text-secondary); margin-top:10px;">ELAWS te forme par la pratique : courte leçon → exercice → feedback. Tu progresses module après module.</p>
-    <div id="formationLeconActive" style="margin-top:12px;"></div>`;
-    box.innerHTML = html;
-}
-
-function lancerModuleFormation(parcoursKey, moduleId) {
-    const parcours = PARCOURS_FORMATION[parcoursKey] || PARCOURS_FORMATION.general;
-    const mod = parcours.modules.find(m => m.id === moduleId);
-    if (!mod) return;
-    const zone = document.getElementById('formationLeconActive');
-    if (!zone) return;
-    zone.innerHTML = `<div style="border:1px solid var(--accent); border-radius:12px; padding:14px; background:rgba(56,189,248,0.08);">
-        <strong style="color:var(--accent); font-size:14px;">${mod.titre}</strong>
-        <pre style="white-space:pre-wrap; font-family:inherit; font-size:12.5px; line-height:1.5; margin:10px 0;">${mod.lecon}</pre>
-        <button onclick="soumettreExerciceFormation('${parcoursKey}','${moduleId}')" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">✍️ Soumettre mon exercice</button>
-    </div>`;
-    zone.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function marquerModuleTermine(moduleId) {
-    const prog = getProgressionFormation();
-    if (!prog.termines.includes(moduleId)) prog.termines.push(moduleId);
-    sauvegarderFormation();
-    afficherFormationPratique();
-    alert('Module validé. Continue sur le suivant.');
-}
-
-function soumettreExerciceFormation(parcoursKey, moduleId) {
-    const parcours = PARCOURS_FORMATION[parcoursKey] || PARCOURS_FORMATION.general;
-    const mod = parcours.modules.find(m => m.id === moduleId);
-    if (!mod) return;
-    const reponse = prompt('Ton exercice :\n' + mod.exercice);
-    if (reponse === null || !reponse.trim()) return;
-    const prog = getProgressionFormation();
-    prog.notes[moduleId] = reponse.trim();
-    if (!prog.termines.includes(moduleId)) prog.termines.push(moduleId);
-    sauvegarderFormation();
-    afficherFormationPratique();
-    // Feedback via ELAWS
-    elawsMode = 'formation';
-    switchTab('elaws-ia');
-    const input = document.getElementById('elawsInput');
-    if (input) {
-        input.value = `Corrige mon exercice de formation « ${mod.titre} ». Consignes: ${mod.exercice}. Ma réponse: ${reponse.trim()}. Donne un feedback pratique, 4 à 6 phrases max, sans répéter ma réponse en entier.`;
-        poserQuestionElaws();
-    }
-}
-
-function demanderCoachElaws(parcoursKey, moduleId) {
-    const parcours = PARCOURS_FORMATION[parcoursKey] || PARCOURS_FORMATION.general;
-    const mod = parcours.modules.find(m => m.id === moduleId);
-    if (!mod) return;
-    elawsMode = 'formation';
-    switchTab('elaws-ia');
-    const input = document.getElementById('elawsInput');
-    if (input) {
-        input.value = `Tu es mon formateur pratique. Module: « ${mod.titre} ». Résume la méthode en 5 étapes max, puis donne-moi un mini-exercice concret pour mon métier (${utilisateur?.metier || 'mon activité'}). Sois direct, pas de blabla.`;
-        poserQuestionElaws();
-    }
-}
+let elawsMode = 'grand_public'; // grand_public | formation | chat
 
 function echapperHtml(s) {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
 }
-
-function nettoyerReponseIA(texte, question) {
+function nettoyerReponseIA(texte) {
     if (!texte) return texte;
     let t = texte.trim();
     t = t.replace(/^(ELAWS\s*(AI)?\s*[:\-–—]\s*)/i, '');
@@ -607,36 +397,231 @@ function nettoyerReponseIA(texte, question) {
     return t.trim() || texte.trim();
 }
 
-function reponseLocaleFormation(question, profil) {
-    const prenom = profil?.nom ? profil.nom.split(' ')[0] : '';
+function assurerStructureJour() {
+    if (!utilisateur) return;
+    if (!utilisateur.vieQuotidienne) {
+        utilisateur.vieQuotidienne = {
+            budget: { solde: 0, notes: '' },
+            famille: [],
+            demarches: [],
+            astuces: []
+        };
+    }
+    if (!utilisateur.tableauJour) {
+        utilisateur.tableauJour = { date: '', pro: '', perso: '', formation: '' };
+    }
+}
+
+function sauvegarderProfilLocal() {
+    if (utilisateur) localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
+}
+
+// ----- Tableau de bord du jour -----
+function dateDuJourISO() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function afficherTableauJour() {
+    assurerStructureJour();
+    const el = document.getElementById('tableauJourContainer');
+    if (!el || !utilisateur) return;
+    const tj = utilisateur.tableauJour;
+    if (tj.date !== dateDuJourISO()) {
+        // nouveau jour : on garde les textes mais on marque la date
+        tj.date = dateDuJourISO();
+        sauvegarderProfilLocal();
+    }
+    el.innerHTML = `
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">Aujourd'hui · ${tj.date}</div>
+        <label style="font-size:11px;">1. Action pro / travail</label>
+        <input type="text" id="jourPro" class="input" placeholder="Ex: Appeler 3 clients" value="${echapperHtml(tj.pro || '')}">
+        <label style="font-size:11px;">2. Action perso / vie quotidienne</label>
+        <input type="text" id="jourPerso" class="input" placeholder="Ex: Payer facture / courses" value="${echapperHtml(tj.perso || '')}">
+        <label style="font-size:11px;">3. Formation / progression</label>
+        <input type="text" id="jourFormation" class="input" placeholder="Ex: 15 min leçon prix & marge" value="${echapperHtml(tj.formation || '')}">
+        <button onclick="sauvegarderTableauJour()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669); margin-top:4px;">💾 Enregistrer ma journée</button>
+        <button onclick="demanderConseilJourElaws()" class="btn-action" style="margin-top:8px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">🤖 ELAWS : m'aider à prioriser</button>
+    `;
+}
+
+function sauvegarderTableauJour() {
+    assurerStructureJour();
+    utilisateur.tableauJour = {
+        date: dateDuJourISO(),
+        pro: (document.getElementById('jourPro')?.value || '').trim(),
+        perso: (document.getElementById('jourPerso')?.value || '').trim(),
+        formation: (document.getElementById('jourFormation')?.value || '').trim()
+    };
+    sauvegarderProfilLocal();
+    const dash = document.getElementById('dashResumeJour');
+    if (dash) majResumeJourDashboard();
+    alert('Journée enregistrée.');
+}
+
+function majResumeJourDashboard() {
+    const dash = document.getElementById('dashResumeJour');
+    if (!dash || !utilisateur) return;
+    assurerStructureJour();
+    const tj = utilisateur.tableauJour || {};
+    const lignes = [];
+    if (tj.pro) lignes.push('💼 ' + tj.pro);
+    if (tj.perso) lignes.push('🏠 ' + tj.perso);
+    if (tj.formation) lignes.push('📚 ' + tj.formation);
+    if (lignes.length === 0) {
+        dash.innerHTML = `<p style="font-size:12px; color:var(--text-secondary); margin:0;">Définis tes 3 actions du jour pour avancer clairement.</p>
+        <button onclick="switchTab('vie-quotidienne')" class="btn-action" style="margin-top:8px; font-size:12px;">Ouvrir le tableau du jour</button>`;
+    } else {
+        dash.innerHTML = `<div style="font-size:12.5px; line-height:1.5;">${lignes.map(l => echapperHtml(l)).join('<br>')}</div>
+        <button onclick="switchTab('vie-quotidienne')" class="btn-action" style="margin-top:8px; font-size:11px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Modifier</button>`;
+    }
+}
+
+function demanderConseilJourElaws() {
+    assurerStructureJour();
+    const pro = document.getElementById('jourPro')?.value || utilisateur.tableauJour.pro || '';
+    const perso = document.getElementById('jourPerso')?.value || utilisateur.tableauJour.perso || '';
+    const form = document.getElementById('jourFormation')?.value || utilisateur.tableauJour.formation || '';
+    elawsMode = 'grand_public';
+    switchTab('elaws-ia');
+    const input = document.getElementById('elawsInput');
+    if (input) {
+        input.value = `Voici mes 3 actions du jour — pro: «${pro||'vide'}», perso: «${perso||'vide'}», formation: «${form||'vide'}». Aide-moi à prioriser et donne 3 conseils concrets pour réussir cette journée. Réponse courte et simple.`;
+        poserQuestionElaws();
+    }
+}
+
+// ----- Vie quotidienne -----
+function afficherVieQuotidienne() {
+    assurerStructureJour();
+    afficherTableauJour();
+    const vq = utilisateur.vieQuotidienne;
+    const budgetEl = document.getElementById('vqBudgetSolde');
+    const notesEl = document.getElementById('vqBudgetNotes');
+    if (budgetEl) budgetEl.value = vq.budget?.solde ?? '';
+    if (notesEl) notesEl.value = vq.budget?.notes || '';
+
+    const fam = document.getElementById('vqFamilleListe');
+    if (fam) {
+        if (!vq.famille.length) fam.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">Aucun contact famille / confiance pour l’instant.</p>';
+        else fam.innerHTML = vq.famille.map((c, i) =>
+            `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid var(--border-color); border-radius:8px; margin-bottom:6px;">
+                <div><strong style="font-size:12.5px;">${echapperHtml(c.nom)}</strong><div style="font-size:11px; color:var(--text-secondary);">${echapperHtml(c.tel)} · ${echapperHtml(c.lien || '')}</div></div>
+                <div style="display:flex; gap:4px;">
+                    <button onclick="preparerAppel('${echapperHtml(c.tel)}')" class="btn-action" style="width:auto; padding:5px 8px; font-size:10px; background:var(--success);">📞</button>
+                    <button onclick="retirerContactFamille(${i})" class="btn-action" style="width:auto; padding:5px 8px; font-size:10px; background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.4); box-shadow:none;">✕</button>
+                </div>
+            </div>`
+        ).join('');
+    }
+
+    const dem = document.getElementById('vqDemarchesListe');
+    if (dem) {
+        if (!vq.demarches.length) dem.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">Aucune démarche en cours.</p>';
+        else dem.innerHTML = vq.demarches.map((d, i) =>
+            `<div style="padding:8px; border:1px solid var(--border-color); border-radius:8px; margin-bottom:6px;">
+                <strong style="font-size:12.5px;">${d.fait ? '✅ ' : '⏳ '}${echapperHtml(d.titre)}</strong>
+                ${d.detail ? `<div style="font-size:11px; color:var(--text-secondary);">${echapperHtml(d.detail)}</div>` : ''}
+                <div style="margin-top:6px; display:flex; gap:4px;">
+                    <button onclick="toggleDemarche(${i})" class="btn-action" style="width:auto; padding:4px 8px; font-size:10px;">${d.fait ? 'Réouvrir' : 'Fait'}</button>
+                    <button onclick="retirerDemarche(${i})" class="btn-action" style="width:auto; padding:4px 8px; font-size:10px; background:rgba(248,113,113,0.15); color:#f87171; box-shadow:none;">Suppr.</button>
+                </div>
+            </div>`
+        ).join('');
+    }
+}
+
+function sauvegarderBudgetVQ() {
+    assurerStructureJour();
+    const solde = parseFloat(document.getElementById('vqBudgetSolde')?.value || '0') || 0;
+    const notes = (document.getElementById('vqBudgetNotes')?.value || '').trim();
+    utilisateur.vieQuotidienne.budget = { solde, notes };
+    sauvegarderProfilLocal();
+    alert('Budget enregistré.');
+}
+
+function ajouterContactFamille() {
+    assurerStructureJour();
+    const nom = prompt('Nom :');
+    if (!nom) return;
+    const tel = prompt('Téléphone :');
+    if (!tel) return;
+    const lien = prompt('Lien (conjoint, parent, ami de confiance…) :', 'Famille') || 'Famille';
+    utilisateur.vieQuotidienne.famille.push({ nom: nom.trim(), tel: tel.replace(/\s+/g,'').trim(), lien: lien.trim() });
+    sauvegarderProfilLocal();
+    afficherVieQuotidienne();
+}
+
+function retirerContactFamille(i) {
+    assurerStructureJour();
+    utilisateur.vieQuotidienne.famille.splice(i, 1);
+    sauvegarderProfilLocal();
+    afficherVieQuotidienne();
+}
+
+function ajouterDemarche() {
+    assurerStructureJour();
+    const titre = prompt('Démarche (ex: Carte d\'identité, inscription école, facture…) :');
+    if (!titre) return;
+    const detail = prompt('Détail / prochain pas :', '') || '';
+    utilisateur.vieQuotidienne.demarches.unshift({ titre: titre.trim(), detail: detail.trim(), fait: false });
+    sauvegarderProfilLocal();
+    afficherVieQuotidienne();
+}
+
+function toggleDemarche(i) {
+    assurerStructureJour();
+    const d = utilisateur.vieQuotidienne.demarches[i];
+    if (d) d.fait = !d.fait;
+    sauvegarderProfilLocal();
+    afficherVieQuotidienne();
+}
+
+function retirerDemarche(i) {
+    assurerStructureJour();
+    utilisateur.vieQuotidienne.demarches.splice(i, 1);
+    sauvegarderProfilLocal();
+    afficherVieQuotidienne();
+}
+
+function astuceVQ(theme) {
+    elawsMode = 'grand_public';
+    switchTab('elaws-ia');
+    const input = document.getElementById('elawsInput');
+    const prompts = {
+        budget: 'Donne 5 astuces simples pour gérer un petit budget familial au quotidien. Court, pratique, sans jargon.',
+        demarches: 'Explique comment bien préparer une démarche administrative (papiers, file, questions à poser). Conseils universels, simples.',
+        famille: 'Conseils concrets pour mieux s\'organiser en famille (tâches, communication, temps). Réponse courte.',
+        sante: 'Donne des gestes de prévention santé au quotidien (hygiène, sommeil, hydratation, quand consulter). Rappelle que tu ne remplaces pas un médecin.',
+        securite: 'Astuces de sécurité personnelle au quotidien (téléphone, trajets, argent, arnaques). Simple et prudent.'
+    };
+    if (input) {
+        input.value = prompts[theme] || prompts.budget;
+        poserQuestionElaws();
+    }
+}
+
+function reponseLocaleElaws(question, profil) {
     const q = (question || '').toLowerCase();
-    if (/bonjour|salut|hello|hi/.test(q))
-        return (prenom ? prenom + ', ' : '') + 'on enchaîne. Dis-moi ce que tu veux apprendre à faire concrètement.';
-    if (/exercice|corrige|feedback/.test(q))
-        return 'Bon réflexe de pratiquer. Vérifie : est-ce actionnable dès demain ? Est-ce mesurable ? Si oui, valide le module et passe au suivant. Sinon, raccourcis ta réponse en une action claire.';
-    if (/former|apprendre|leçon|module/.test(q))
-        return 'Va dans l\'onglet Formation pratique, choisis un module, lis la méthode, fais l\'exercice, puis renvoie-moi ton travail pour un feedback.';
-    return 'Je suis en mode local. Ouvre Formation pratique pour les leçons structurées, ou réessaie ta question quand le réseau est disponible pour un coaching détaillé.';
+    if (/bonjour|salut|hello|hi/.test(q)) return 'Salut. Dis-moi ce dont tu as besoin aujourd\'hui — travail, maison, budget, démarches…';
+    if (/médecin|diagnostic|maladie grave|ordonnance/.test(q)) return 'Pour la santé, je peux donner des infos générales de prévention. Pour un diagnostic ou un traitement, vois un professionnel de santé.';
+    if (/avocat|plainte|juridique|loi exacte/.test(q)) return 'Je peux t\'orienter sur les étapes générales d\'une démarche. Pour un conseil juridique précis, adresse-toi à un professionnel ou un service compétent local.';
+    if (/budget|argent|épargne/.test(q)) return 'Règle simple : note entrées et sorties. Paye d\'abord le vital (nourriture, logement, transport). Mets de côté même un petit montant. Évite les dettes pour le superflu.';
+    return 'Je suis en mode local. Reformule ta question simplement, ou réessaie avec le réseau pour une réponse plus complète. En attendant : utilise le Tableau du jour et Vie quotidienne.';
 }
 
 async function appelerIAMondiale(question, profil) {
     const prenom = profil?.nom ? profil.nom.split(' ')[0] : 'toi';
-    const metier = profil?.metier || 'activité de terrain';
-    const modeFormation = elawsMode === 'formation' || /exercice|corrige|formateur|module|leçon|apprendre|entraîne/i.test(question);
-
-    const systemPrompt = modeFormation
-        ? `Tu es ELAWS, formateur pratique dans EVAT Continuum.
-Règles:
-- Réponds UNIQUEMENT avec le contenu utile. Ne répète jamais la question.
-- Style humain, direct, clair. Tutoiement possible.
-- Formation = méthode + exemple + mini-exercice. Pas de cours universitaire long.
-- 4 à 8 phrases ou étapes courtes max sauf si on te demande plus.
-- Adapte au métier: ${metier}. Prénom: ${prenom}.
-- Corrige les exercices avec bienveillance et exigence: ce qui est bon, ce qui manque, prochaine action.`
-        : `Tu es ELAWS dans EVAT Continuum. Réponds comme un humain compétent et direct.
-Ne répète jamais la question. Pas de « j'ai bien reçu ». Langue de l'utilisateur.
-Métier de l'utilisateur: ${metier}. Prénom: ${prenom}.
-Si la question porte sur apprendre un savoir-faire, propose une méthode pratique courte.`;
+    const metier = profil?.metier || '';
+    const systemPrompt = `Tu es ELAWS, assistant grand public de l'application EVAT Continuum.
+RÈGLES STRICTES :
+- Réponds UNIQUEMENT avec ta réponse utile. Ne répète JAMAIS la question.
+- Langage simple, humain, clair. Accessible à tous.
+- 4 à 8 phrases ou étapes courtes, sauf demande contraire.
+- Tu aides au quotidien : travail, budget, famille, démarches, organisation, apprentissage pratique.
+- SANTÉ : infos générales de prévention seulement. Ne pose JAMAIS de diagnostic et ne prescris pas. Invite à consulter un professionnel si besoin.
+- JURIDIQUE / ARGENT RISQUÉ : reste général, prudent, pas de conseil absolu. Oriente vers services compétents si nécessaire.
+- Pas de formules robotiques (« j'ai bien reçu », « concernant ta question »).
+Utilisateur : ${prenom}${metier ? ', activité : ' + metier : ''}.`;
 
     const messages = [{ role: 'system', content: systemPrompt }];
     elawsHistory.slice(-8).forEach(m => messages.push(m));
@@ -654,11 +639,10 @@ Si la question porte sur apprendre un savoir-faire, propose une méthode pratiqu
         clearTimeout(t);
         if (res.ok) {
             let text = (await res.text()).trim();
-            text = nettoyerReponseIA(text, question);
+            text = nettoyerReponseIA(text);
             if (text.length > 3) return text;
         }
     } catch (e) {}
-
     try {
         const prompt = encodeURIComponent(systemPrompt + '\n\nUtilisateur: ' + question + '\nELAWS:');
         const ctrl2 = new AbortController();
@@ -667,12 +651,11 @@ Si la question porte sur apprendre un savoir-faire, propose une méthode pratiqu
         clearTimeout(t2);
         if (res2.ok) {
             let text2 = (await res2.text()).trim();
-            text2 = nettoyerReponseIA(text2, question);
+            text2 = nettoyerReponseIA(text2);
             if (text2.length > 3) return text2;
         }
     } catch (e) {}
-
-    return reponseLocaleFormation(question, profil);
+    return reponseLocaleElaws(question, profil);
 }
 
 async function poserQuestionElaws() {
@@ -681,34 +664,23 @@ async function poserQuestionElaws() {
     if (!question || !utilisateur || elawsBusy) return;
     const chatBox = document.getElementById('elawsChatBox');
     if (!chatBox) return;
-
     elawsBusy = true;
-    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; text-align:right;"><strong style="color:var(--success); font-size:12px;">👤 ${echapperHtml(utilisateur.nom)}</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.4;">${echapperHtml(question)}</p></div>`;
+    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; text-align:right;"><strong style="color:var(--success); font-size:12px;">👤 ${echapperHtml(utilisateur.nom)}</strong><p style="margin:4px 0 0 0; font-size:12.5px;">${echapperHtml(question)}</p></div>`;
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
-
     const loadingId = 'elaws-load-' + Date.now();
-    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="font-size:12px; margin:6px 0 0 0; color:var(--text-secondary);">Réflexion…</p></div>`;
-    chatBox.scrollTop = chatBox.scrollHeight;
-
+    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="font-size:12px; margin:6px 0 0; color:var(--text-secondary);">Réflexion…</p></div>`;
     let reponse = '';
-    try {
-        reponse = await appelerIAMondiale(question, utilisateur);
-    } catch (e) {
-        reponse = reponseLocaleFormation(question, utilisateur);
-    }
-
+    try { reponse = await appelerIAMondiale(question, utilisateur); }
+    catch (e) { reponse = reponseLocaleElaws(question, utilisateur); }
     elawsHistory.push({ role: 'user', content: question });
     elawsHistory.push({ role: 'assistant', content: reponse });
     if (elawsHistory.length > 20) elawsHistory = elawsHistory.slice(-16);
-
-    const html = `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.5; white-space:pre-wrap;">${echapperHtml(reponse)}</p></div>`;
+    const html = `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="margin:4px 0 0; font-size:12.5px; line-height:1.5; white-space:pre-wrap;">${echapperHtml(reponse)}</p></div>`;
     const el = document.getElementById(loadingId);
-    if (el) el.outerHTML = html;
-    else chatBox.innerHTML += html;
+    if (el) el.outerHTML = html; else chatBox.innerHTML += html;
     chatBox.scrollTop = chatBox.scrollHeight;
     elawsBusy = false;
-    elawsMode = 'chat';
 }
 
 function toggleMenu(e) {
@@ -742,7 +714,8 @@ function switchTab(tabId) {
     fermerTousLesMenus();
 
     if(tabId === 'contacts') afficherContacts();
-    if(tabId === 'formation') afficherFormationPratique();
+    if(tabId === 'vie-quotidienne') afficherVieQuotidienne();
+    if(tabId === 'dashboard') majResumeJourDashboard();
     if(tabId === 'map') {
         setTimeout(() => {
             if(!mapInstance) {
@@ -1178,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     afficherNotesBlocNotes();
     afficherMessagesLocaux();
+    if (utilisateur) { assurerStructureJour(); majResumeJourDashboard(); }
 });
 
 async function demanderPermissionsEtActiverProfil() {

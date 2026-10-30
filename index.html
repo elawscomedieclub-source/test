@@ -90,8 +90,8 @@
             </div>
             <div style="display:flex; flex-direction:column; gap:6px; flex:1;">
                 <a href="#" onclick="switchTab('dashboard')" class="nav-link active" id="link-dashboard">📊 Dashboard HUD</a>
+                <a href="#" onclick="switchTab('vie-quotidienne')" class="nav-link" id="link-vie-quotidienne">🏠 Vie quotidienne</a>
                 <a href="#" onclick="switchTab('elaws-ia')" class="nav-link" id="link-elaws-ia">🤖 Assistant IA ELAWS</a>
-                <a href="#" onclick="switchTab('formation')" class="nav-link" id="link-formation">📚 Formation pratique</a>
                 <a href="#" onclick="switchTab('contacts')" class="nav-link" id="link-contacts">📇 Contacts & Annuaire</a>
                 <a href="#" onclick="switchTab('map')" class="nav-link" id="link-map">🗺️ Carte & Position GPS</a>
                 <a href="#" onclick="switchTab('messagerie')" class="nav-link" id="link-messagerie">💬 Messagerie & Fichiers</a>
@@ -113,6 +113,10 @@
 
         <main style="padding:14px;">
             <section id="tab-dashboard" class="tab-content active">
+                <div class="card">
+                    <h2 style="margin-bottom:8px;">🎯 Aujourd'hui</h2>
+                    <div id="dashResumeJour"><p style="font-size:12px; color:var(--text-secondary); margin:0;">Charge du profil…</p></div>
+                </div>
                 <div class="card" style="text-align:center; padding:12px;">
                     <div class="nexus-avatar-frame"><div class="nexus-avatar-glow"></div></div>
                     <h3 id="dashUserName" style="color:var(--accent); font-size:13px; margin:6px 0 2px 0;">KODJO MARCELINE</h3>
@@ -128,15 +132,54 @@
                 </div>
             </section>
 
+            
+            <section id="tab-vie-quotidienne" class="tab-content" style="display:none;">
+                <div class="card">
+                    <h2>🎯 Tableau de bord du jour</h2>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 10px 0;">3 actions max : pro, perso, formation. Clair = faisable.</p>
+                    <div id="tableauJourContainer"></div>
+                </div>
+                <div class="card">
+                    <h2>💰 Budget simple</h2>
+                    <label>Solde / disponible estimé</label>
+                    <input type="number" id="vqBudgetSolde" class="input" placeholder="0">
+                    <label>Notes (dépenses à venir, dettes…)</label>
+                    <textarea id="vqBudgetNotes" class="input" style="height:60px;" placeholder="Ex: Loyer samedi, crédit…"></textarea>
+                    <button onclick="sauvegarderBudgetVQ()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">Enregistrer le budget</button>
+                    <button onclick="astuceVQ('budget')" class="btn-action" style="margin-top:8px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Astuces budget (ELAWS)</button>
+                </div>
+                <div class="card">
+                    <h2>👨‍👩‍👧 Famille & contacts de confiance</h2>
+                    <div id="vqFamilleListe" style="margin-bottom:10px;"></div>
+                    <button onclick="ajouterContactFamille()" class="btn-action">➕ Ajouter un contact</button>
+                    <button onclick="astuceVQ('famille')" class="btn-action" style="margin-top:8px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Conseils famille (ELAWS)</button>
+                </div>
+                <div class="card">
+                    <h2>📋 Démarches</h2>
+                    <div id="vqDemarchesListe" style="margin-bottom:10px;"></div>
+                    <button onclick="ajouterDemarche()" class="btn-action">➕ Nouvelle démarche</button>
+                    <button onclick="astuceVQ('demarches')" class="btn-action" style="margin-top:8px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Préparer une démarche (ELAWS)</button>
+                </div>
+                <div class="card">
+                    <h2>💡 Astuces du quotidien</h2>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <button onclick="astuceVQ('sante')" class="btn-action" style="font-size:11px; padding:10px; background:rgba(56,189,248,0.12); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Santé (prévention)</button>
+                        <button onclick="astuceVQ('securite')" class="btn-action" style="font-size:11px; padding:10px; background:rgba(56,189,248,0.12); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Sécurité</button>
+                        <button onclick="astuceVQ('budget')" class="btn-action" style="font-size:11px; padding:10px; background:rgba(56,189,248,0.12); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Argent</button>
+                        <button onclick="astuceVQ('famille')" class="btn-action" style="font-size:11px; padding:10px; background:rgba(56,189,248,0.12); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">Organisation</button>
+                    </div>
+                    <p style="font-size:10.5px; color:var(--text-secondary); margin:10px 0 0 0;">ELAWS donne des conseils généraux. Il ne remplace pas un médecin, un avocat ou un service officiel.</p>
+                </div>
+            </section>
+
             <section id="tab-elaws-ia" class="tab-content" style="display:none;">
                 <div class="card">
                     <h2>🤖 Assistant IA ELAWS</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 10px 0;">Coach intelligent · réponses directes · formation par la pratique</p>
-                    <button onclick="switchTab('formation')" class="btn-action" style="margin-bottom:12px; font-size:12px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">📚 Ouvrir la formation pratique</button>
+                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 10px 0;">Mode grand public · langage simple · prudent sur santé et juridique</p>
                     <div id="elawsChatBox" style="background:var(--bg-color); border:1px solid var(--border-color); border-radius:10px; padding:10px; height:220px; overflow-y:auto; margin-bottom:10px; display:flex; flex-direction:column; gap:8px;">
                         <div style="background:rgba(59,130,246,0.1); border:1px solid var(--accent); padding:8px; border-radius:8px;">
                             <strong style="color:var(--accent); font-size:11.5px;">🤖 ELAWS AI :</strong>
-                            <p style="font-size:12px; margin:3px 0 0 0;">Salut. Pose une question ou ouvre Formation pratique pour un parcours métier : méthode, exercice, feedback.</p>
+                            <p style="font-size:12px; margin:3px 0 0 0;">Salut. Je t'aide au quotidien : travail, budget, famille, démarches, organisation. Pose ta question simplement.</p>
                         </div>
                     </div>
                     <div style="display:flex; gap:6px;">
@@ -145,15 +188,6 @@
                         <button onclick="poserQuestionElaws()" class="btn-action" style="width:auto; padding:0 16px; background:var(--success); color:#fff;">Envoyer</button>
                     </div>
                     <div id="micStatusElaws" style="font-size:11px; color:var(--text-secondary); margin-top:4px; text-align:right;"></div>
-                </div>
-            </section>
-
-            
-            <section id="tab-formation" class="tab-content" style="display:none;">
-                <div class="card">
-                    <h2>📚 Formation pratique ELAWS</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px 0;">Parcours adaptés à ton métier : leçon courte → exercice → feedback du coach ELAWS.</p>
-                    <div id="formationContainer"></div>
                 </div>
             </section>
 
