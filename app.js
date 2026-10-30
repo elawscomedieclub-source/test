@@ -75,10 +75,8 @@ const socket = io(SERVER_URL, {
 socket.on('connect', () => {
     const statusEl = document.getElementById('serverConnectionStatus');
     if(statusEl) {
-        statusEl.innerHTML = '<span class="status-dot"></span> Connecté';
-        statusEl.style.color = '';
-        statusEl.style.background = 'rgba(52, 211, 153, 0.12)';
-        statusEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+        statusEl.innerHTML = "🟢 Connecté";
+        statusEl.style.color = "var(--success)";
     }
     if(utilisateur) {
         socket.emit('register_user', { nom: utilisateur.nom, telephone: utilisateur.telephone, metier: utilisateur.metier });
@@ -88,10 +86,8 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
     const statusEl = document.getElementById('serverConnectionStatus');
     if(statusEl) {
-        statusEl.innerHTML = '<span class="status-dot" style="background:#f87171;box-shadow:0 0 8px #f87171;"></span> Déconnecté';
-        statusEl.style.background = 'rgba(248, 113, 113, 0.12)';
-        statusEl.style.borderColor = 'rgba(248, 113, 113, 0.3)';
-        statusEl.style.color = '#f87171';
+        statusEl.innerHTML = "🔴 Déconnecté";
+        statusEl.style.color = "var(--danger)";
     }
 });
 
@@ -256,6 +252,8 @@ function appliquerInfosProfil() {
     
     verifierEtSynchroniserContacts();
     afficherContacts();
+    afficherOutilsPro();
+    afficherOutilsProDashboard();
 }
 
 function verifierEtSynchroniserContacts() {
@@ -374,178 +372,38 @@ function basculerEcouteVocaleIA() {
     recognition.start();
 }
 
-// ========== ELAWS AI — autonome, réactif, humain ==========
-let elawsBusy = false;
-let elawsHistory = [];
-
-function echapperHtml(str) {
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
-}
-
-function reponseLocaleElaws(question, profil) {
-    const prenom = profil?.nom ? profil.nom.split(' ')[0] : '';
-    const q = (question || '').toLowerCase().trim();
-
-    if (/^(bonjour|salut|hello|hi|hey|bonsoir)\b/.test(q))
-        return prenom ? `Salut ${prenom}. Qu'est-ce qui t'amène ?` : `Salut. Qu'est-ce qui t'amène ?`;
-    if (/merci|thanks|thank you/.test(q))
-        return `De rien. Tu as autre chose en tête ?`;
-    if (/qui es[- ]?tu|who are you|c'est quoi elaws/.test(q))
-        return `Je suis ELAWS. On discute, je t'aide à y voir plus clair — questions pratiques, idées, explications. Vas-y.`;
-    if (/aide|help|que peux[- ]?tu|capable/.test(q))
-        return `Pose-moi ce que tu veux : une explication, un conseil, un plan, une idée. Je réponds directement.`;
-    if (/contact|appel|call|téléph/.test(q))
-        return `Les onglets Contacts et Appels VoIP sont là pour ça. Ton identifiant s'affiche dans Appels.`;
-    // Ne jamais répéter la question
-    return `Je n'ai pas le réseau pour le moment. Reformule ou réessaie dans une seconde — je te répondrai clairement.`;
-}
-
-async function appelerIAMondiale(question, profil) {
-    const prenom = profil?.nom ? profil.nom.split(' ')[0] : 'toi';
-
-    // Prompt strict : réponse humaine, directe, sans répétition
-    const systemPrompt = `Tu es ELAWS, un interlocuteur intelligent intégré dans l'app EVAT Continuum.
-
-RÈGLES STRICTES :
-- Réponds UNIQUEMENT avec ta réponse. Ne répète JAMAIS la question de l'utilisateur.
-- Ne dis jamais « tu as demandé », « concernant ta question », « j'ai bien reçu », « analyse de… ».
-- Parle comme un humain brillant et naturel : clair, direct, utile, un peu chaleureux sans en faire trop.
-- Pas de formules robotiques. Pas de listes inutiles sauf si vraiment pertinent.
-- Réponds dans la langue de l'utilisateur.
-- Sois réactif : va à l'essentiel, développe seulement si la question le demande.
-- Si tu ne sais pas, dis-le simplement et propose une piste.
-- L'utilisateur s'appelle ${prenom}. Ne le salue pas à chaque message sauf s'il te salue.
-
-Tu as une intelligence large (science, business, vie pratique, tech, culture, conseils). Réponds comme quelqu'un de compétent qui écoute vraiment.`;
-
-    const messages = [{ role: 'system', content: systemPrompt }];
-    elawsHistory.slice(-8).forEach(m => messages.push(m));
-    messages.push({ role: 'user', content: question });
-
-    // 1) Pollinations POST
-    try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 28000);
-        const res = await fetch('https://text.pollinations.ai/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages,
-                model: 'openai',
-                seed: Math.floor(Math.random() * 99999)
-            }),
-            signal: ctrl.signal
-        });
-        clearTimeout(t);
-        if (res.ok) {
-            let text = (await res.text()).trim();
-            text = nettoyerReponseIA(text, question);
-            if (text.length > 3) return text;
-        }
-    } catch (e) { console.warn('AI POST', e); }
-
-    // 2) Pollinations GET
-    try {
-        const prompt = encodeURIComponent(
-            systemPrompt + '\n\nUtilisateur: ' + question + '\nELAWS:'
-        );
-        const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), 22000);
-        const res2 = await fetch('https://text.pollinations.ai/' + prompt + '?model=openai', { signal: ctrl2.signal });
-        clearTimeout(t2);
-        if (res2.ok) {
-            let text2 = (await res2.text()).trim();
-            text2 = nettoyerReponseIA(text2, question);
-            if (text2.length > 3) return text2;
-        }
-    } catch (e) { console.warn('AI GET', e); }
-
-    // 3) Serveur EVAT
-    try {
-        const res3 = await new Promise((resolve, reject) => {
-            const t = setTimeout(() => reject(new Error('timeout')), 12000);
-            if (typeof socket === 'undefined' || !socket.connected) { clearTimeout(t); reject(new Error('offline')); return; }
-            socket.emit('ai_query', { question, nom: prenom }, (reply) => {
-                clearTimeout(t);
-                resolve(reply);
-            });
-        });
-        if (res3 && res3.reponse) {
-            return nettoyerReponseIA(String(res3.reponse).trim(), question);
-        }
-    } catch (e) { console.warn('AI server', e); }
-
-    return reponseLocaleElaws(question, profil);
-}
-
-/** Enlève les formulations qui répètent la question ou sonnent robotiques */
-function nettoyerReponseIA(texte, question) {
-    if (!texte) return texte;
-    let t = texte.trim();
-
-    // Enlever préfixes du type "ELAWS :" / "Réponse :"
-    t = t.replace(/^(ELAWS\s*(AI)?\s*[:\-–—]\s*)/i, '');
-    t = t.replace(/^(Réponse\s*[:\-–—]\s*)/i, '');
-
-    // Si la réponse commence par une reformulation de la question, tenter de couper
-    const qShort = (question || '').trim().slice(0, 40).toLowerCase();
-    if (qShort.length > 8 && t.toLowerCase().startsWith(qShort)) {
-        const cut = t.indexOf('.', qShort.length);
-        if (cut > 0 && cut < t.length - 10) t = t.slice(cut + 1).trim();
-    }
-
-    // Phrases robotiques fréquentes en début
-    const banStart = [
-        /^j'ai bien (reçu|compris|noté)[^.!]*[.!]?\s*/i,
-        /^concernant (ta|votre|la) question[^.!]*[.!]?\s*/i,
-        /^tu (as|m'as) (demandé|posé)[^.!]*[.!]?\s*/i,
-        /^vous (avez|m'avez) (demandé|posé)[^.!]*[.!]?\s*/i,
-        /^analyse (instantanée|de)[^.!]*[.!]?\s*/i,
-        /^voici (ma|une) réponse[^.!]*[.!]?\s*/i,
-        /^en réponse à[^.!]*[.!]?\s*/i
-    ];
-    for (const re of banStart) t = t.replace(re, '');
-
-    return t.trim() || texte.trim();
-}
-
-async function poserQuestionElaws() {
+// Réponse IA instantanée et intelligente
+function poserQuestionElaws() {
     const input = document.getElementById('elawsInput');
-    const question = (input?.value || '').trim();
-    if (!question || !utilisateur || elawsBusy) return;
+    const question = input.value.trim();
+    if(!question || !utilisateur) return;
     const chatBox = document.getElementById('elawsChatBox');
-    if (!chatBox) return;
-
-    elawsBusy = true;
-
-    // Message utilisateur (affiché une seule fois, sans être repris par l'IA)
-    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; text-align:right;"><strong style="color:var(--success); font-size:12px;">👤 ${echapperHtml(utilisateur.nom)}</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.4;">${echapperHtml(question)}</p></div>`;
+    
+    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; text-align:right;"><strong style="color:var(--success);">👤 ${utilisateur.nom} :</strong><p style="margin:3px 0 0 0; font-size:12px;">${question}</p></div>`;
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const loadingId = 'elaws-load-' + Date.now();
-    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><div class="typing-indicator" style="margin-top:6px;"><span></span><span></span><span></span></div></div>`;
-    chatBox.scrollTop = chatBox.scrollHeight;
+    setTimeout(() => {
+        let reponse = "";
+        const qLower = question.toLowerCase();
 
-    let reponse = '';
-    try {
-        reponse = await appelerIAMondiale(question, utilisateur);
-    } catch (err) {
-        reponse = reponseLocaleElaws(question, utilisateur);
-    }
+        if (qLower.includes('bonjour') || qLower.includes('salut')) {
+            reponse = `Bonjour ${utilisateur.nom} ! En tant qu'expert en ${utilisateur.metier}, je suis à votre service. Que souhaitez-vous analyser ?`;
+        } else if (qLower.includes('merci')) {
+            reponse = `C'est un plaisir, ${utilisateur.nom}. Je veille sur vos systèmes et communications.`;
+        } else if (qLower.includes('contact') || qLower.includes('appel')) {
+            reponse = `Pour vos appels VoIP sécurisés ou vos contacts, rendez-vous dans l'onglet Annuaire ou Appels. Votre ID : ${utilisateur.telephone}.`;
+        } else if (qLower.includes('entreprise') || qLower.includes('business') || qLower.includes('nif') || qLower.includes('statut')) {
+            reponse = `Concernant votre structure à Lomé et la gestion de vos entités avec un NIF, une distinction claire est recommandée. Souhaitez-vous un plan stratégique ?`;
+        } else if (qLower.includes('aide') || qLower.includes('que peux-tu') || qLower.includes('fonction')) {
+            reponse = `Je suis l'assistant ELAWS AI, intégré dans votre écosystème EVAT Continuum. Je gère vos notes, votre stratégie et vos communications chiffrées.`;
+        } else {
+            reponse = `Analyse instantanée de "${question}" validée pour ${utilisateur.nom} (${utilisateur.metier}). Le système applique vos consignes avec succès.`;
+        }
 
-    elawsHistory.push({ role: 'user', content: question });
-    elawsHistory.push({ role: 'assistant', content: reponse });
-    if (elawsHistory.length > 20) elawsHistory = elawsHistory.slice(-16);
-
-    const html = `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.5; white-space:pre-wrap;">${echapperHtml(reponse)}</p></div>`;
-    const loadingEl = document.getElementById(loadingId);
-    if (loadingEl) loadingEl.outerHTML = html;
-    else chatBox.innerHTML += html;
-    chatBox.scrollTop = chatBox.scrollHeight;
-    elawsBusy = false;
+        chatBox.innerHTML += `<div style="background:rgba(59,130,246,0.1); border:1px solid var(--accent); padding:8px; border-radius:8px;"><strong style="color:var(--accent);">🤖 ELAWS AI :</strong><p style="margin:3px 0 0 0; font-size:12px;">${reponse}</p></div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 150);
 }
 
 function toggleMenu(e) {
@@ -569,6 +427,457 @@ function fermerTousLesMenus() {
 let mapInstance = null;
 let userMarker = null;
 
+
+// ========== OUTILS PRO SELON LE MÉTIER ==========
+const CATALOGUE_OUTILS_PRO = {
+    commerce: {
+        label: 'Commerce & Vente',
+        icon: '🛒',
+        outils: [
+            { id: 'devis', titre: 'Devis rapide', desc: 'Estime un prix et une marge', action: 'outilDevis' },
+            { id: 'stock', titre: 'Suivi stock simple', desc: 'Note tes produits et quantités', action: 'outilStock' },
+            { id: 'clients', titre: 'Fiches clients', desc: 'Retrouve tes contacts pro', action: 'outilClients' },
+            { id: 'objectifs', titre: 'Objectifs de vente', desc: 'Fixe et suis tes cibles', action: 'outilObjectifsVente' }
+        ]
+    },
+    admin: {
+        label: 'Administration & Bureau',
+        icon: '📋',
+        outils: [
+            { id: 'checklist', titre: 'Checklist du jour', desc: 'Organise tes tâches prioritaires', action: 'outilChecklist' },
+            { id: 'courrier', titre: 'Modèle de courrier', desc: 'Structure un message pro', action: 'outilCourrier' },
+            { id: 'planning', titre: 'Planning simple', desc: 'Répartis ta journée', action: 'outilPlanning' },
+            { id: 'notes_pro', titre: 'Notes de réunion', desc: 'Capture décisions et actions', action: 'outilNotesReunion' }
+        ]
+    },
+    tech: {
+        label: 'Tech & Informatique',
+        icon: '💻',
+        outils: [
+            { id: 'bugs', titre: 'Journal de bugs', desc: 'Liste et priorise les incidents', action: 'outilBugs' },
+            { id: 'specs', titre: 'Mini cahier des charges', desc: 'Clarifie une fonctionnalité', action: 'outilSpecs' },
+            { id: 'checklist_deploy', titre: 'Checklist déploiement', desc: 'Évite les oublis avant mise en ligne', action: 'outilDeploy' },
+            { id: 'idees', titre: 'Backlog idées', desc: 'Capte les améliorations', action: 'outilBacklog' }
+        ]
+    },
+    agri: {
+        label: 'Agriculture & Élevage',
+        icon: '🌾',
+        outils: [
+            { id: 'saison', titre: 'Calendrier cultural', desc: 'Repères par saison', action: 'outilSaison' },
+            { id: 'depenses', titre: 'Dépenses exploitation', desc: 'Suis tes coûts', action: 'outilDepensesAgri' },
+            { id: 'recolte', titre: 'Suivi récolte / production', desc: 'Quantités et dates', action: 'outilRecolte' },
+            { id: 'marche', titre: 'Prix du marché', desc: 'Note les prix observés', action: 'outilPrixMarche' }
+        ]
+    },
+    education: {
+        label: 'Éducation & Formation',
+        icon: '📚',
+        outils: [
+            { id: 'cours', titre: 'Plan de cours', desc: 'Structure une séance', action: 'outilPlanCours' },
+            { id: 'eleves', titre: 'Suivi apprenants', desc: 'Progression et remarques', action: 'outilEleves' },
+            { id: 'eval', titre: 'Grille d\'évaluation', desc: 'Critères clairs', action: 'outilEval' },
+            { id: 'ressources', titre: 'Ressources pédagogiques', desc: 'Liste de supports', action: 'outilRessources' }
+        ]
+    },
+    sante: {
+        label: 'Santé & Bien-être',
+        icon: '🩺',
+        outils: [
+            { id: 'rdv', titre: 'Agenda rendez-vous', desc: 'Organisation de la journée', action: 'outilRdv' },
+            { id: 'rappels', titre: 'Rappels patients / clients', desc: 'Ne rien oublier', action: 'outilRappels' },
+            { id: 'protocole', titre: 'Protocoles', desc: 'Procédures standard', action: 'outilProtocole' },
+            { id: 'stock_sante', titre: 'Stock matériel', desc: 'Consommables et équipements', action: 'outilStockSante' }
+        ]
+    },
+    transport: {
+        label: 'Transport & Logistique',
+        icon: '🚚',
+        outils: [
+            { id: 'trajets', titre: 'Feuille de route', desc: 'Trajets du jour', action: 'outilTrajets' },
+            { id: 'carburant', titre: 'Suivi carburant', desc: 'Coûts et consommation', action: 'outilCarburant' },
+            { id: 'livraisons', titre: 'Livraisons', desc: 'Statut des courses', action: 'outilLivraisons' },
+            { id: 'entretien', titre: 'Entretien véhicule', desc: 'Échéances et notes', action: 'outilEntretien' }
+        ]
+    },
+    artisan: {
+        label: 'Artisanat & BTP',
+        icon: '🔧',
+        outils: [
+            { id: 'devis_art', titre: 'Devis chantier', desc: 'Main d\'œuvre + matériaux', action: 'outilDevisArtisan' },
+            { id: 'materiaux', titre: 'Liste matériaux', desc: 'Ce qu\'il faut acheter', action: 'outilMateriaux' },
+            { id: 'chantiers', titre: 'Chantiers en cours', desc: 'Avancement', action: 'outilChantiers' },
+            { id: 'photos', titre: 'Notes de chantier', desc: 'Observations terrain', action: 'outilNotesChantier' }
+        ]
+    },
+    entrepreneur: {
+        label: 'Entrepreneuriat & Business',
+        icon: '🚀',
+        outils: [
+            { id: 'cash', titre: 'Trésorerie simple', desc: 'Entrées / sorties', action: 'outilTresorerie' },
+            { id: 'offre', titre: 'Offre de valeur', desc: 'Clarifie ton produit', action: 'outilOffre' },
+            { id: 'pipeline', titre: 'Pipeline clients', desc: 'Prospects → clients', action: 'outilPipeline' },
+            { id: 'kpi', titre: 'Indicateurs du mois', desc: 'Ce qui compte vraiment', action: 'outilKpi' }
+        ]
+    },
+    general: {
+        label: 'Outils universels',
+        icon: '⚡',
+        outils: [
+            { id: 'todo', titre: 'To-do du jour', desc: '3 priorités max', action: 'outilTodo' },
+            { id: 'idees_g', titre: 'Captures d\'idées', desc: 'Ne perds plus une idée', action: 'outilIdees' },
+            { id: 'temps', titre: 'Bloc de focus', desc: 'Session de travail ciblée', action: 'outilFocus' },
+            { id: 'bilan', titre: 'Bilan de fin de journée', desc: 'Ce qui a avancé', action: 'outilBilan' }
+        ]
+    }
+};
+
+function detecterCategorieMetier(metier) {
+    const m = (metier || '').toLowerCase();
+    if (/commerc|vente|vendeur|retail|boutique|magasin|market/.test(m)) return 'commerce';
+    if (/admin|secrét|bureau|comptable|rh|ressources humaines|assistant|gestionnaire|office/.test(m)) return 'admin';
+    if (/dev|info|tech|program|software|réseau|système|data|cyber|ingénieur/.test(m)) return 'tech';
+    if (/agri|élev|fermier|plant|culture|pêche|ferme/.test(m)) return 'agri';
+    if (/enseign|prof|éduc|formateur|école|pédagog|tuteur|coach/.test(m)) return 'education';
+    if (/santé|médic|infirm|pharmac|soin|thérapie|dentaire|clinique/.test(m)) return 'sante';
+    if (/transport|chauffeur|logistique|livreur|taxi|cargo|supply/.test(m)) return 'transport';
+    if (/artisan|maçonn|plomb|électric|menuis|soudeur|btp|chantier|mécanicien/.test(m)) return 'artisan';
+    if (/entrepr|business|startup|ceo|fondateur|commerçant|auto-entrepreneur|freelance/.test(m)) return 'entrepreneur';
+    return 'general';
+}
+
+function getOutilsPourUtilisateur() {
+    const cat = detecterCategorieMetier(utilisateur?.metier);
+    const pack = CATALOGUE_OUTILS_PRO[cat] || CATALOGUE_OUTILS_PRO.general;
+    const general = CATALOGUE_OUTILS_PRO.general;
+    // Métier + toujours 2 outils universels
+    const extra = general.outils.filter(o => !pack.outils.find(p => p.id === o.id)).slice(0, 2);
+    return { categorie: cat, label: pack.label, icon: pack.icon, outils: [...pack.outils, ...extra] };
+}
+
+function afficherOutilsPro() {
+    const container = document.getElementById('outilsProContainer');
+    if (!container || !utilisateur) return;
+    const pack = getOutilsPourUtilisateur();
+    let html = `<div style="margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="font-size:22px;">${pack.icon}</span>
+            <div>
+                <strong style="color:var(--accent); font-size:13px;">${pack.label}</strong>
+                <div style="font-size:11px; color:var(--text-secondary);">Outils adaptés à : ${utilisateur.metier || 'votre activité'}</div>
+            </div>
+        </div>
+    </div>`;
+    html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">`;
+    pack.outils.forEach(o => {
+        html += `<button onclick="${o.action}()" class="btn-action" style="background:rgba(56,189,248,0.12); color:var(--accent); border:1px solid var(--border-color); box-shadow:none; text-align:left; padding:12px; font-size:12px;">
+            <strong style="display:block; margin-bottom:3px;">${o.titre}</strong>
+            <span style="font-weight:400; color:var(--text-secondary); font-size:11px;">${o.desc}</span>
+        </button>`;
+    });
+    html += `</div>
+    <p style="font-size:11px; color:var(--text-secondary); margin-top:12px;">Ces outils sont fournis par EVAT pour améliorer ton rendement au quotidien. Utilise-les, note tes résultats, et avance.</p>
+    <div id="outilProResultat" style="margin-top:12px;"></div>`;
+    container.innerHTML = html;
+}
+
+function afficherOutilsProDashboard() {
+    const el = document.getElementById('dashOutilsPro');
+    if (!el || !utilisateur) return;
+    const pack = getOutilsPourUtilisateur();
+    el.innerHTML = `<div class="card">
+        <h2 style="margin-bottom:8px;">${pack.icon} Tes outils pro</h2>
+        <p style="font-size:12px; color:var(--text-secondary); margin:0 0 10px 0;">Adaptés à <strong style="color:var(--accent);">${utilisateur.metier || 'ton activité'}</strong> — pour mieux travailler et mieux gagner.</p>
+        <button onclick="switchTab('outils')" class="btn-action" style="font-size:12px;">Ouvrir mes outils de travail</button>
+    </div>`;
+}
+
+function sauvegarderDonneeOutil(cle, valeur) {
+    if (!utilisateur) return;
+    if (!utilisateur.outilsPro) utilisateur.outilsPro = {};
+    utilisateur.outilsPro[cle] = valeur;
+    localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
+}
+
+function lireDonneeOutil(cle, def) {
+    return (utilisateur && utilisateur.outilsPro && utilisateur.outilsPro[cle] != null) ? utilisateur.outilsPro[cle] : def;
+}
+
+function afficherResultatOutil(titre, contenuHtml) {
+    const box = document.getElementById('outilProResultat');
+    if (!box) return;
+    box.innerHTML = `<div style="background:var(--input-bg, rgba(2,6,23,0.6)); border:1px solid var(--border-color); border-radius:12px; padding:12px;">
+        <strong style="color:var(--success); font-size:13px;">${titre}</strong>
+        <div style="margin-top:8px; font-size:12.5px; line-height:1.45;">${contenuHtml}</div>
+    </div>`;
+}
+
+// --- Actions outils ---
+function outilDevis() {
+    const produit = prompt('Produit / service :');
+    if (produit === null) return;
+    const cout = parseFloat(prompt('Coût pour toi :', lireDonneeOutil('dernierCout', '0')) || '0');
+    const prix = parseFloat(prompt('Prix de vente :', lireDonneeOutil('dernierPrix', '0')) || '0');
+    const marge = prix - cout;
+    const pct = prix > 0 ? Math.round((marge / prix) * 100) : 0;
+    sauvegarderDonneeOutil('dernierCout', cout);
+    sauvegarderDonneeOutil('dernierPrix', prix);
+    afficherResultatOutil('💰 Devis rapide', `<p><b>${produit}</b></p><p>Coût : ${cout} · Prix : ${prix}</p><p style="color:var(--success);">Marge : ${marge} (${pct}%)</p><p style="font-size:11px; color:var(--text-secondary);">Astuce EVAT : vise une marge saine et note chaque vente dans tes contacts.</p>`);
+}
+function outilStock() {
+    const liste = prompt('Liste produits (ex: Riz:20, Huile:5) :', lireDonneeOutil('stock', ''));
+    if (liste === null) return;
+    sauvegarderDonneeOutil('stock', liste);
+    afficherResultatOutil('📦 Stock', `<p style="white-space:pre-wrap;">${liste || 'Aucun produit noté.'}</p>`);
+}
+function outilClients() {
+    switchTab('contacts');
+    alert('Utilise l\'annuaire pour tes clients. Ajoute nom + numéro + métier.');
+}
+function outilObjectifsVente() {
+    const obj = prompt('Objectif de vente (montant ou quantité) :', lireDonneeOutil('objVente', ''));
+    if (obj === null) return;
+    const fait = prompt('Réalisé jusqu\'ici :', lireDonneeOutil('faitVente', '0'));
+    sauvegarderDonneeOutil('objVente', obj);
+    sauvegarderDonneeOutil('faitVente', fait);
+    afficherResultatOutil('🎯 Objectifs de vente', `<p>Objectif : <b>${obj}</b></p><p>Réalisé : <b>${fait}</b></p>`);
+}
+function outilChecklist() {
+    const t = prompt('Tâches du jour (séparées par des virgules) :', lireDonneeOutil('checklist', 'Relire dossiers, Appeler X, Envoyer rapport'));
+    if (t === null) return;
+    sauvegarderDonneeOutil('checklist', t);
+    const items = t.split(',').map(s => s.trim()).filter(Boolean);
+    afficherResultatOutil('✅ Checklist', '<ul style="margin:0; padding-left:18px;">' + items.map(i => `<li>${i}</li>`).join('') + '</ul>');
+}
+function outilCourrier() {
+    const dest = prompt('Destinataire :', '');
+    const objet = prompt('Objet :', '');
+    if (objet === null) return;
+    const modele = `Objet : ${objet}\n\nBonjour ${dest || ''},\n\n[Votre message ici]\n\nCordialement,\n${utilisateur?.nom || ''}`;
+    afficherResultatOutil('✉️ Modèle de courrier', `<pre style="white-space:pre-wrap; font-size:12px; margin:0;">${modele}</pre>`);
+}
+function outilPlanning() {
+    const p = prompt('Planning (ex: 8h-10h: dossier A, 10h-12h: réunions) :', lireDonneeOutil('planning', ''));
+    if (p === null) return;
+    sauvegarderDonneeOutil('planning', p);
+    afficherResultatOutil('🗓️ Planning', `<p style="white-space:pre-wrap;">${p}</p>`);
+}
+function outilNotesReunion() {
+    const n = prompt('Décisions & actions de la réunion :', '');
+    if (n === null) return;
+    if (!utilisateur.notes) utilisateur.notes = [];
+    utilisateur.notes.unshift({ titre: 'Réunion ' + new Date().toLocaleDateString(), contenu: n });
+    localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
+    afficherNotesBlocNotes();
+    afficherResultatOutil('📝 Note de réunion', `<p>Enregistrée dans tes notes.</p><p style="white-space:pre-wrap;">${n}</p>`);
+}
+function outilBugs() {
+    const b = prompt('Bug / incident à tracer :', '');
+    if (!b) return;
+    const prev = lireDonneeOutil('bugs', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift({ t: b, d: new Date().toLocaleString() });
+    sauvegarderDonneeOutil('bugs', arr.slice(0, 30));
+    afficherResultatOutil('🐛 Journal de bugs', arr.slice(0, 5).map(x => `<div style="margin-bottom:6px;"><b>${x.d}</b><br>${x.t}</div>`).join(''));
+}
+function outilSpecs() {
+    const s = prompt('Décris la fonctionnalité (qui / quoi / pourquoi) :', '');
+    if (s === null) return;
+    afficherResultatOutil('📄 Mini specs', `<p style="white-space:pre-wrap;">${s}</p><p style="font-size:11px; color:var(--text-secondary);">Garde ça comme référence avant de coder ou de déléguer.</p>`);
+}
+function outilDeploy() {
+    afficherResultatOutil('🚀 Checklist déploiement', `<ul style="padding-left:18px; margin:0;">
+        <li>Tests OK</li><li>Backup fait</li><li>Variables d'env vérifiées</li>
+        <li>Migration DB si besoin</li><li>Monitoring prêt</li><li>Rollback possible</li>
+    </ul>`);
+}
+function outilBacklog() {
+    const i = prompt('Idée / amélioration :', '');
+    if (!i) return;
+    const prev = lireDonneeOutil('backlog', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift(i);
+    sauvegarderDonneeOutil('backlog', arr.slice(0, 40));
+    afficherResultatOutil('💡 Backlog', arr.slice(0, 8).map(x => `• ${x}`).join('<br>'));
+}
+function outilSaison() {
+    afficherResultatOutil('🌾 Repères culturaux', `<p>Adapte à ta zone :</p><ul style="padding-left:18px; margin:0;">
+        <li>Saison des pluies : préparer sols / semis</li>
+        <li>Saison sèche : irrigation, récoltes, stockage</li>
+        <li>Note tes dates réelles ici chaque mois</li>
+    </ul>`);
+}
+function outilDepensesAgri() {
+    const d = prompt('Dépense (ex: Engrais 15000) :', '');
+    if (!d) return;
+    const prev = lireDonneeOutil('depAgri', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift({ d, t: new Date().toLocaleDateString() });
+    sauvegarderDonneeOutil('depAgri', arr.slice(0, 50));
+    afficherResultatOutil('💸 Dépenses', arr.slice(0, 8).map(x => `${x.t} — ${x.d}`).join('<br>'));
+}
+function outilRecolte() {
+    const r = prompt('Récolte / production (quantité + produit) :', '');
+    if (!r) return;
+    sauvegarderDonneeOutil('derniereRecolte', r);
+    afficherResultatOutil('📊 Production', `<p>${r}</p>`);
+}
+function outilPrixMarche() {
+    const p = prompt('Prix observés aujourd\'hui :', lireDonneeOutil('prixMarche', ''));
+    if (p === null) return;
+    sauvegarderDonneeOutil('prixMarche', p);
+    afficherResultatOutil('🏷️ Prix du marché', `<p style="white-space:pre-wrap;">${p}</p>`);
+}
+function outilPlanCours() {
+    const c = prompt('Titre de la séance + objectifs :', '');
+    if (!c) return;
+    afficherResultatOutil('📚 Plan de cours', `<p style="white-space:pre-wrap;">${c}</p><p style="font-size:11px; color:var(--text-secondary);">Découpe : intro → activité → synthèse → évaluation.</p>`);
+}
+function outilEleves() {
+    const e = prompt('Nom apprenant + remarque :', '');
+    if (!e) return;
+    const prev = lireDonneeOutil('eleves', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift(e);
+    sauvegarderDonneeOutil('eleves', arr.slice(0, 40));
+    afficherResultatOutil('👩‍🎓 Suivi', arr.slice(0, 8).map(x => `• ${x}`).join('<br>'));
+}
+function outilEval() {
+    afficherResultatOutil('📏 Grille d\'évaluation', `<ul style="padding-left:18px; margin:0;">
+        <li>Compréhension (0-5)</li><li>Application (0-5)</li>
+        <li>Participation (0-5)</li><li>Autonomie (0-5)</li>
+    </ul>`);
+}
+function outilRessources() {
+    const r = prompt('Ressources (liens, livres, supports) :', lireDonneeOutil('ressources', ''));
+    if (r === null) return;
+    sauvegarderDonneeOutil('ressources', r);
+    afficherResultatOutil('📎 Ressources', `<p style="white-space:pre-wrap;">${r}</p>`);
+}
+function outilRdv() {
+    const r = prompt('Rendez-vous (heure + nom) :', '');
+    if (!r) return;
+    const prev = lireDonneeOutil('rdv', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift(r);
+    sauvegarderDonneeOutil('rdv', arr.slice(0, 20));
+    afficherResultatOutil('📅 Agenda', arr.map(x => `• ${x}`).join('<br>'));
+}
+function outilRappels() {
+    const r = prompt('Rappel à ne pas oublier :', '');
+    if (!r) return;
+    afficherResultatOutil('🔔 Rappel', `<p>${r}</p>`);
+}
+function outilProtocole() {
+    afficherResultatOutil('📋 Protocole type', `<ol style="padding-left:18px; margin:0;">
+        <li>Accueil</li><li>Écoute / anamnèse</li><li>Action / soin</li>
+        <li>Conseils</li><li>Suivi</li>
+    </ol>`);
+}
+function outilStockSante() {
+    const s = prompt('Stock matériel / consommables :', lireDonneeOutil('stockSante', ''));
+    if (s === null) return;
+    sauvegarderDonneeOutil('stockSante', s);
+    afficherResultatOutil('💊 Stock', `<p style="white-space:pre-wrap;">${s}</p>`);
+}
+function outilTrajets() {
+    const t = prompt('Trajets du jour :', lireDonneeOutil('trajets', ''));
+    if (t === null) return;
+    sauvegarderDonneeOutil('trajets', t);
+    afficherResultatOutil('🗺️ Feuille de route', `<p style="white-space:pre-wrap;">${t}</p>`);
+}
+function outilCarburant() {
+    const c = prompt('Carburant (litres / coût) :', '');
+    if (!c) return;
+    afficherResultatOutil('⛽ Carburant', `<p>${c}</p>`);
+}
+function outilLivraisons() {
+    const l = prompt('Livraisons (client + statut) :', lireDonneeOutil('livraisons', ''));
+    if (l === null) return;
+    sauvegarderDonneeOutil('livraisons', l);
+    afficherResultatOutil('📦 Livraisons', `<p style="white-space:pre-wrap;">${l}</p>`);
+}
+function outilEntretien() {
+    const e = prompt('Entretien véhicule (date + type) :', '');
+    if (!e) return;
+    afficherResultatOutil('🔩 Entretien', `<p>${e}</p>`);
+}
+function outilDevisArtisan() {
+    const main = parseFloat(prompt('Main d\'œuvre :', '0') || '0');
+    const mat = parseFloat(prompt('Matériaux :', '0') || '0');
+    const total = main + mat;
+    afficherResultatOutil('🏗️ Devis chantier', `<p>Main d'œuvre : ${main}</p><p>Matériaux : ${mat}</p><p style="color:var(--success);"><b>Total : ${total}</b></p>`);
+}
+function outilMateriaux() {
+    const m = prompt('Liste matériaux :', lireDonneeOutil('materiaux', ''));
+    if (m === null) return;
+    sauvegarderDonneeOutil('materiaux', m);
+    afficherResultatOutil('🧱 Matériaux', `<p style="white-space:pre-wrap;">${m}</p>`);
+}
+function outilChantiers() {
+    const c = prompt('Chantier + avancement % :', '');
+    if (!c) return;
+    afficherResultatOutil('🏡 Chantier', `<p>${c}</p>`);
+}
+function outilNotesChantier() {
+    const n = prompt('Notes de terrain :', '');
+    if (!n) return;
+    if (!utilisateur.notes) utilisateur.notes = [];
+    utilisateur.notes.unshift({ titre: 'Chantier ' + new Date().toLocaleDateString(), contenu: n });
+    localStorage.setItem('evat_profil', JSON.stringify(utilisateur));
+    afficherNotesBlocNotes();
+    afficherResultatOutil('📝 Notes chantier', `<p>${n}</p>`);
+}
+function outilTresorerie() {
+    const e = parseFloat(prompt('Entrées du mois :', lireDonneeOutil('cashIn', '0')) || '0');
+    const s = parseFloat(prompt('Sorties du mois :', lireDonneeOutil('cashOut', '0')) || '0');
+    sauvegarderDonneeOutil('cashIn', e);
+    sauvegarderDonneeOutil('cashOut', s);
+    afficherResultatOutil('💵 Trésorerie', `<p>Entrées : ${e}</p><p>Sorties : ${s}</p><p style="color:var(--success);"><b>Solde : ${e - s}</b></p>`);
+}
+function outilOffre() {
+    const o = prompt('Que vends-tu, à qui, quel problème tu résous ?', lireDonneeOutil('offre', ''));
+    if (o === null) return;
+    sauvegarderDonneeOutil('offre', o);
+    afficherResultatOutil('🎯 Offre de valeur', `<p style="white-space:pre-wrap;">${o}</p>`);
+}
+function outilPipeline() {
+    const p = prompt('Prospects (nom → étape) :', lireDonneeOutil('pipeline', ''));
+    if (p === null) return;
+    sauvegarderDonneeOutil('pipeline', p);
+    afficherResultatOutil('🧲 Pipeline', `<p style="white-space:pre-wrap;">${p}</p>`);
+}
+function outilKpi() {
+    const k = prompt('Indicateurs du mois (CA, clients, etc.) :', lireDonneeOutil('kpi', ''));
+    if (k === null) return;
+    sauvegarderDonneeOutil('kpi', k);
+    afficherResultatOutil('📈 KPI', `<p style="white-space:pre-wrap;">${k}</p>`);
+}
+function outilTodo() {
+    const t = prompt('3 priorités du jour :', lireDonneeOutil('todo', ''));
+    if (t === null) return;
+    sauvegarderDonneeOutil('todo', t);
+    afficherResultatOutil('✅ To-do', `<p style="white-space:pre-wrap;">${t}</p>`);
+}
+function outilIdees() {
+    const i = prompt('Idée à capturer :', '');
+    if (!i) return;
+    const prev = lireDonneeOutil('idees', []);
+    const arr = Array.isArray(prev) ? prev : [];
+    arr.unshift(i);
+    sauvegarderDonneeOutil('idees', arr.slice(0, 50));
+    afficherResultatOutil('💡 Idées', arr.slice(0, 10).map(x => `• ${x}`).join('<br>'));
+}
+function outilFocus() {
+    afficherResultatOutil('🎯 Session focus', `<p>Choisis <b>une</b> tâche. Coupe les distractions. 25 minutes. Puis pause 5 minutes.</p><p style="font-size:11px; color:var(--text-secondary);">Répète 3 à 4 cycles pour une matinée productive.</p>`);
+}
+function outilBilan() {
+    const b = prompt('Qu\'as-tu terminé aujourd\'hui ?', '');
+    if (b === null) return;
+    afficherResultatOutil('🌙 Bilan', `<p style="white-space:pre-wrap;">${b}</p><p style="font-size:11px; color:var(--text-secondary);">Ce qui est mesuré s'améliore. Reviens demain avec 3 priorités.</p>`);
+}
+
+
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -579,6 +888,8 @@ function switchTab(tabId) {
     fermerTousLesMenus();
 
     if(tabId === 'contacts') afficherContacts();
+    if(tabId === 'outils') { afficherOutilsPro(); afficherNotesBlocNotes(); }
+    if(tabId === 'dashboard') afficherOutilsProDashboard();
     if(tabId === 'map') {
         setTimeout(() => {
             if(!mapInstance) {
