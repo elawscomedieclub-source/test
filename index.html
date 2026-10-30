@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="logo_evat.svg" type="image/svg+xml">
     <meta name="theme-color" content="#020617">
-    <meta name="description" content="EVAT Continuum — Espace de travail quantique universel : communications, IA, contacts et outils pour tous.">
+    <meta name="description" content="EVAT Continuum — Espace quantique universel avec IA, communications et outils pour tous.">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,7 +17,7 @@
 <body>
     <canvas id="particles-canvas"></canvas>
 
-    <div id="welcomeModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="welcomeModal" class="modal-overlay" style="display:none; position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;">
         <div class="card" style="max-width:420px; width:100%; text-align:center;">
             <div class="quantum-globe-container" style="margin:0 auto 10px auto;">
                 <div class="earth-globe"></div>
@@ -25,7 +25,7 @@
             </div>
             <h2 style="font-size:20px; margin:0 0 4px 0; background:linear-gradient(90deg,#38bdf8,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; font-weight:800;">EVAT Continuum</h2>
             <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 6px 0;">Votre espace quantique universel</p>
-            <p style="font-size:11.5px; color:#64748b; margin-bottom:16px;">Communications • IA • Contacts • Outils — pour tous, partout</p>
+            <p style="font-size:11.5px; color:#64748b; margin-bottom:16px;">IA mondiale • Communications • Outils — pour tous, partout</p>
             <div style="text-align:left; margin-bottom:14px;">
                 <label>Nom complet</label>
                 <input type="text" id="inputNom" class="input" placeholder="Ex: Amina Koné" value="">
@@ -65,10 +65,10 @@
         </div>
     </div>
 
-    <div id="notificationBanner" style="position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:9999; width:90%; max-width:400px; display:none; background:rgba(16,185,129,0.95); color:#fff; padding:12px; border-radius:12px; border:1px solid #34d399;">
+    <div id="notificationBanner" style="position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:9999; width:90%; max-width:400px; display:none; background:rgba(16,185,129,0.95); color:#fff; padding:12px; border-radius:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <strong style="font-size:13px; display:block;">🚨 Alerte Sentinelle Continuum</strong>
+                <strong style="font-size:13px; display:block;">🚨 Alerte Continuum</strong>
                 <span id="notificationText" style="font-size:12px;">Contact inscrit !</span>
             </div>
             <button onclick="fermerNotification()" style="background:none; border:none; color:#fff; font-size:16px; cursor:pointer;">✕</button>
@@ -82,7 +82,7 @@
                 <h1>EVAT Continuum</h1>
             </div>
             <div class="header-actions">
-                <button onclick="basculerTheme()" class="theme-toggle" id="themeToggleBtn" title="Mode clair / sombre" aria-label="Changer de thème">🌙</button>
+                <button onclick="basculerTheme()" class="theme-toggle" id="themeToggleBtn" title="Mode clair / sombre">🌙</button>
                 <div class="elaws-widget">
                     <button onclick="switchTab('elaws-ia')" class="elaws-magic-bubble">
                         <div class="magic-sphere-core"></div>
@@ -128,7 +128,7 @@
             <section id="tab-dashboard" class="tab-content active">
                 <div class="card" style="text-align:center; padding:16px;">
                     <div class="nexus-avatar-frame"><div class="nexus-avatar-glow"></div></div>
-                    <h3 id="dashUserName" style="font-size:15px; margin:10px 0 3px 0; font-weight:700; letter-spacing:0.5px;">BIENVENUE</h3>
+                    <h3 id="dashUserName" style="font-size:15px; margin:10px 0 3px 0; font-weight:700;">BIENVENUE</h3>
                     <span id="dashUserMetier" style="font-size:12px; color:var(--text-secondary);">Votre espace Continuum</span>
                 </div>
                 <div class="card" style="text-align:center;">
@@ -140,13 +140,13 @@
                         <div class="earth-globe"></div>
                         <div class="orbit-ring"></div>
                     </div>
-                    <p style="font-size:11px; color:var(--text-secondary); margin:4px 0 0 0;">Communications sécurisées • Présence mondiale</p>
+                    <p style="font-size:11px; color:var(--text-secondary); margin:4px 0 0 0;">IA mondiale • Communications sécurisées</p>
                 </div>
                 <div class="hud-grid">
                     <div class="hud-metric"><span class="value" id="dashQubits">365</span><span class="label">Qubits</span></div>
                     <div class="hud-metric"><span class="value">∞</span><span class="label">Connexions</span></div>
                     <div class="hud-metric"><span class="value">P2P</span><span class="label">Appels directs</span></div>
-                    <div class="hud-metric"><span class="value">AI</span><span class="label">Assistant ELAWS</span></div>
+                    <div class="hud-metric"><span class="value">AI</span><span class="label">ELAWS mondial</span></div>
                 </div>
                 <div class="card" style="margin-top:14px;">
                     <h2 style="margin-bottom:12px;">Accès rapide</h2>
@@ -162,15 +162,15 @@
             <section id="tab-elaws-ia" class="tab-content" style="display:none;">
                 <div class="card">
                     <h2>🤖 Assistant IA ELAWS</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px 0;">Votre assistant intelligent, disponible 24h/24</p>
-                    <div id="elawsChatBox" style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:12px; padding:12px; height:240px; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+                    <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px 0;">IA mondiale — posez n'importe quelle question, dans n'importe quelle langue</p>
+                    <div id="elawsChatBox" style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:12px; padding:12px; height:280px; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
                         <div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;">
                             <strong style="color:var(--accent); font-size:12px;">🤖 ELAWS AI</strong>
-                            <p style="font-size:12.5px; margin:4px 0 0 0; line-height:1.4;">Bonjour ! Je suis ELAWS, votre assistant quantique. Posez-moi n'importe quelle question — travail, organisation, idées, voyage… Je suis là pour vous aider.</p>
+                            <p style="font-size:12.5px; margin:4px 0 0 0; line-height:1.4;">Bonjour ! Je suis ELAWS, votre assistant intelligent connecté au savoir mondial. Posez-moi n'importe quelle question : science, business, voyage, code, conseils, culture… Je réponds dans votre langue.</p>
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <input type="text" id="elawsInput" class="input" placeholder="Écrivez ou parlez..." style="margin-bottom:0; flex:1;" onkeypress="if(event.key==='Enter') poserQuestionElaws()">
+                        <input type="text" id="elawsInput" class="input" placeholder="Posez votre question (toutes langues)..." style="margin-bottom:0; flex:1;" onkeypress="if(event.key==='Enter') poserQuestionElaws()">
                         <button onclick="basculerEcouteVocaleIA()" class="btn-action" style="width:auto; padding:0 14px; background:rgba(56,189,248,0.15); color:var(--accent); border:1px solid var(--border-color); box-shadow:none;">🎙️</button>
                         <button onclick="poserQuestionElaws()" class="btn-action" style="width:auto; padding:0 18px; background:linear-gradient(135deg,#10b981,#059669);">Envoyer</button>
                     </div>
@@ -185,7 +185,7 @@
                         <strong style="font-size:12px; color:var(--accent);">➕ Enregistrer un contact</strong>
                         <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
                             <input type="text" id="nouveauNomContact" class="input" placeholder="Nom..." style="margin-bottom:0;">
-                            <input type="text" id="nouveauTelContact" class="input" placeholder="Numéro avec indicatif (ex: +228...)" style="margin-bottom:0;">
+                            <input type="text" id="nouveauTelContact" class="input" placeholder="Numéro avec indicatif" style="margin-bottom:0;">
                             <button onclick="ajouterNouveauContact()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">Enregistrer</button>
                         </div>
                     </div>
@@ -197,8 +197,8 @@
                 <div class="card">
                     <h2>🗺️ Carte & Position GPS</h2>
                     <div style="margin-bottom:10px; display:flex; gap:8px;">
-                        <button onclick="partagerMaPositionGPS()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">📍 Partager ma Position</button>
-                        <button onclick="centrerSurMoi()" class="btn-action" style="background:var(--accent); color:#fff;">🎯 Centrer</button>
+                        <button onclick="partagerMaPositionGPS()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">📍 Partager</button>
+                        <button onclick="centrerSurMoi()" class="btn-action">🎯 Centrer</button>
                     </div>
                     <div id="mapContainer" style="width:100%; height:260px; border-radius:14px; border:1px solid var(--border-color);"></div>
                 </div>
@@ -206,14 +206,7 @@
 
             <section id="tab-messagerie" class="tab-content" style="display:none;">
                 <div class="card">
-                    <h2>💬 Messagerie & Stockage Interne</h2>
-                    <div style="background:var(--input-bg); padding:10px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <strong style="font-size:12px; color:var(--success);">📁 Stockage Appareil</strong>
-                            <div style="font-size:11px; color:var(--text-secondary);">Géré automatiquement en arrière-plan</div>
-                        </div>
-                        <span style="font-size:18px;">🔒</span>
-                    </div>
+                    <h2>💬 Messagerie</h2>
                     <div id="listeMessagesLocaux" style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:10px; padding:10px; height:200px; overflow-y:auto; margin-bottom:10px;"></div>
                     <div style="display:flex; gap:6px;">
                         <input type="text" id="chatLocalInput" class="input" placeholder="Message..." style="margin-bottom:0;" onkeypress="if(event.key==='Enter') envoyerMessageChatLocal()">
@@ -226,9 +219,9 @@
                 <div class="card">
                     <h2>📞 Appels Directs & VoIP</h2>
                     <div id="voipStatusDisplay" style="margin:12px 0; color:var(--accent); font-weight:700; text-align:center;">ID : —</div>
-                    <input type="text" id="appelCibleNum" class="input" placeholder="Numéro du contact (ex: +22898231401)">
-                    <button onclick="lancerAppelDirectPeer('audio')" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669); margin-bottom:8px;">🎙️ Appel Audio Direct</button>
-                    <button onclick="lancerAppelDirectPeer('video')" class="btn-action" style="margin-bottom:8px;">📹 Appel Vidéo Direct</button>
+                    <input type="text" id="appelCibleNum" class="input" placeholder="Numéro du contact">
+                    <button onclick="lancerAppelDirectPeer('audio')" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669); margin-bottom:8px;">🎙️ Appel Audio</button>
+                    <button onclick="lancerAppelDirectPeer('video')" class="btn-action" style="margin-bottom:8px;">📹 Appel Vidéo</button>
                     <div id="callContainer" style="margin-top:10px; display:none; background:#000; border-radius:10px; padding:10px; text-align:center;">
                         <video id="remoteVideo" autoplay playsinline style="width:100%; max-height:200px; border-radius:8px; background:#111;"></video>
                         <audio id="remoteAudio" autoplay></audio>
@@ -241,18 +234,17 @@
             <section id="tab-parametres" class="tab-content" style="display:none;">
                 <div class="card">
                     <h2>⚙️ Paramètres & Sonneries</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">Personnalisez la sonnerie de vos appels entrants.</p>
                     <label>Type de Sonnerie</label>
                     <select id="selectSonnerieType" class="input" style="margin-bottom:14px;">
-                        <option value="iphone">📱 Style iPhone (Marimba)</option>
-                        <option value="motorola">📟 Style Motorola (Électronique)</option>
-                        <option value="samsung">🎶 Style Samsung (Over the Horizon)</option>
-                        <option value="classique">🔔 Sonnerie Classique</option>
-                        <option value="custom">🎵 Fichier MP3 Personnel</option>
+                        <option value="iphone">📱 Style iPhone</option>
+                        <option value="motorola">📟 Style Motorola</option>
+                        <option value="samsung">🎶 Style Samsung</option>
+                        <option value="classique">🔔 Classique</option>
+                        <option value="custom">🎵 MP3 Personnel</option>
                     </select>
-                    <label>Importer un fichier MP3 (Max 1 Mo)</label>
+                    <label>Importer un MP3 (Max 1 Mo)</label>
                     <input type="file" id="inputCustomRingtone" accept="audio/mp3,audio/*" class="input" onchange="chargerSonneriePerso(event)" style="margin-bottom:16px;">
-                    <button onclick="sauvegarderParametresApp()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">💾 Enregistrer les Paramètres</button>
+                    <button onclick="sauvegarderParametresApp()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">💾 Enregistrer</button>
                 </div>
             </section>
 
@@ -277,8 +269,7 @@
 
             <section id="tab-sync" class="tab-content" style="display:none;">
                 <div class="card">
-                    <h2>☁️ Sauvegarde Cloud</h2>
-                    <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Téléchargez une copie de vos données (profil, contacts, notes).</p>
+                    <h2>☁️ Sauvegarde</h2>
                     <button onclick="exporterDonneesCloud()" class="btn-action">📥 Télécharger le backup</button>
                 </div>
             </section>
@@ -294,20 +285,20 @@
 
             <section id="tab-profil" class="tab-content" style="display:none;">
                 <div class="card">
-                    <h2>👤 Profil & Sécurité</h2>
+                    <h2>👤 Profil</h2>
                     <label>Nom</label>
                     <input type="text" id="inputNomProfil" class="input">
                     <label>Téléphone</label>
                     <input type="text" id="inputTelProfil2" class="input">
                     <label>Métier</label>
                     <input type="text" id="inputMetierProfil" class="input" style="margin-bottom:12px;">
-                    <button onclick="sauvegarderProfilBaseDesdeProfil()" class="btn-action" style="margin-bottom:10px; background:linear-gradient(135deg,#10b981,#059669);">Enregistrer les Modifications</button>
+                    <button onclick="sauvegarderProfilBaseDesdeProfil()" class="btn-action" style="background:linear-gradient(135deg,#10b981,#059669);">Enregistrer</button>
                 </div>
             </section>
 
             <section id="tab-outils" class="tab-content" style="display:none;">
                 <div class="card">
-                    <h2>🛠️ Bloc-Notes & Outils</h2>
+                    <h2>🛠️ Bloc-Notes</h2>
                     <input type="text" id="noteTitre" class="input" placeholder="Titre...">
                     <textarea id="noteContenu" class="input" placeholder="Contenu..." style="height:60px;"></textarea>
                     <button class="btn-action" onclick="ajouterNoteBlocNotes()" style="background:linear-gradient(135deg,#10b981,#059669);">Enregistrer</button>

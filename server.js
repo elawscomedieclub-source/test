@@ -76,6 +76,36 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('signal', data);
     });
 
+    
+    socket.on('ai_query', async (data, callback) => {
+        try {
+            const question = data?.question || '';
+            const nom = data?.nom || 'utilisateur';
+            // Proxy vers Pollinations si le client ne peut pas y accéder directement
+            const systemPrompt = `Tu es ELAWS AI, assistant d'EVAT Continuum. Réponds clairement et utilement en français (ou dans la langue de la question). Utilisateur: ${nom}.`;
+            const res = await fetch('https://text.pollinations.ai/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: question }
+                    ],
+                    model: 'openai'
+                })
+            });
+            if (res.ok) {
+                const text = await res.text();
+                if (typeof callback === 'function') callback({ reponse: text.trim() });
+            } else {
+                if (typeof callback === 'function') callback({ reponse: null });
+            }
+        } catch (err) {
+            console.log('AI proxy error:', err.message);
+            if (typeof callback === 'function') callback({ reponse: null });
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('Un opérateur s\'est déconnecté:', socket.id);
         for (let [tel, val] of registeredUsers.entries()) {

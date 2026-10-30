@@ -1,18 +1,11 @@
 {
   "name": "EVAT Continuum",
   "short_name": "EVAT",
-  "description": "Espace de travail quantique universel — communications, IA, contacts et outils pour tous",
+  "description": "Espace quantique universel avec IA mondiale, communications et outils pour tous",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
   "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "logo_evat.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+  "icons": [{"src": "logo_evat.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
 }

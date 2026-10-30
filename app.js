@@ -376,42 +376,140 @@ function basculerEcouteVocaleIA() {
 }
 
 // Réponse IA instantanée et intelligente
-function poserQuestionElaws() {
+// ========== ELAWS AI MONDIALE — réponses à toutes les questions ==========
+let elawsBusy = false;
+let elawsHistory = [];
+
+async function appelerIAMondiale(question, profil) {
+    const prenom = profil?.nom ? profil.nom.split(' ')[0] : 'utilisateur';
+    const metier = profil?.metier || '';
+    const systemPrompt = `Tu es ELAWS AI, l'assistant intelligent de l'application EVAT Continuum. Tu réponds de façon claire, utile et bienveillante à TOUTES les questions, dans la langue de l'utilisateur. Tu es un expert polyvalent (science, business, voyage, tech, culture, conseils pratiques, éducation, santé générale non médicale, etc.). Réponds de manière concise mais complète (2 à 8 phrases selon la complexité). Utilisateur: ${prenom}${metier ? ', métier: ' + metier : ''}. Ne refuse jamais une question légitime. Si tu ne sais pas, explique ce que tu sais et oriente.`;
+
+    // Historique court pour le contexte
+    const messages = [
+        { role: 'system', content: systemPrompt }
+    ];
+    elawsHistory.slice(-6).forEach(m => messages.push(m));
+    messages.push({ role: 'user', content: question });
+
+    // Méthode 1: Pollinations AI (gratuit, sans clé) — compatible OpenAI
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 25000);
+        const res = await fetch('https://text.pollinations.ai/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: messages,
+                model: 'openai',
+                seed: Math.floor(Math.random() * 100000)
+            }),
+            signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+            const text = await res.text();
+            if (text && text.trim().length > 5) {
+                return text.trim();
+            }
+        }
+    } catch (e) { console.warn('Pollinations POST failed', e); }
+
+    // Méthode 2: Pollinations GET (fallback simple)
+    try {
+        const prompt = encodeURIComponent(
+            systemPrompt + '\n\nQuestion de ' + prenom + ': ' + question + '\n\nRéponse ELAWS:'
+        );
+        const ctrl2 = new AbortController();
+        const timer2 = setTimeout(() => ctrl2.abort(), 20000);
+        const res2 = await fetch('https://text.pollinations.ai/' + prompt + '?model=openai', {
+            signal: ctrl2.signal
+        });
+        clearTimeout(timer2);
+        if (res2.ok) {
+            const text2 = await res2.text();
+            if (text2 && text2.trim().length > 5) {
+                return text2.trim();
+            }
+        }
+    } catch (e) { console.warn('Pollinations GET failed', e); }
+
+    // Méthode 3: via le serveur EVAT si disponible
+    try {
+        const res3 = await new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error('timeout')), 15000);
+            socket.emit('ai_query', { question, nom: prenom, metier }, (reply) => {
+                clearTimeout(t);
+                resolve(reply);
+            });
+        });
+        if (res3 && res3.reponse) return res3.reponse;
+    } catch (e) { console.warn('Server AI failed', e); }
+
+    // Fallback local intelligent
+    return reponseLocaleElaws(question, profil);
+}
+
+function reponseLocaleElaws(question, profil) {
+    const prenom = profil?.nom ? profil.nom.split(' ')[0] : 'ami';
+    const q = question.toLowerCase();
+    if (q.includes('bonjour') || q.includes('salut') || q.includes('hello') || q.includes('hi'))
+        return `Bonjour ${prenom} ! Je suis ELAWS. Posez-moi n'importe quelle question — je suis là pour vous aider.`;
+    if (q.includes('merci') || q.includes('thanks'))
+        return `Avec plaisir, ${prenom}. N'hésitez pas si vous avez d'autres questions.`;
+    if (q.includes('qui es') || q.includes('who are'))
+        return `Je suis ELAWS AI, l'assistant intelligent d'EVAT Continuum. Je peux répondre à des questions sur presque tous les sujets : science, business, voyage, technologie, culture, conseils pratiques, et bien plus.`;
+    if (q.includes('contact') || q.includes('appel') || q.includes('call'))
+        return `Pour vos contacts et appels VoIP sécurisés, utilisez les onglets « Contacts » et « Appels VoIP ». Votre ID : ${profil?.telephone || '—'}.`;
+    if (q.includes('aide') || q.includes('help') || q.includes('que peux'))
+        return `Je peux répondre à toutes vos questions (savoir général, conseils, explications). L'application offre aussi : appels P2P, contacts, notes, carte GPS, stratégie et voyage. Que souhaitez-vous explorer ?`;
+    return `Je n'ai pas pu joindre le réseau IA pour le moment. Voici ce que je peux vous dire localement : votre question « ${question} » est notée. Réessayez dans un instant pour une réponse complète, ou reformulez. En attendant, les modules Contacts, Appels, Notes et Voyage restent disponibles.`;
+}
+
+function echapperHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+async function poserQuestionElaws() {
     const input = document.getElementById('elawsInput');
     const question = input.value.trim();
-    if(!question || !utilisateur) return;
+    if (!question || !utilisateur || elawsBusy) return;
     const chatBox = document.getElementById('elawsChatBox');
-    
-    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; text-align:right;"><strong style="color:var(--success);">👤 ${utilisateur.nom} :</strong><p style="margin:3px 0 0 0; font-size:12px;">${question}</p></div>`;
+
+    elawsBusy = true;
+    chatBox.innerHTML += `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; text-align:right;"><strong style="color:var(--success); font-size:12px;">👤 ${echapperHtml(utilisateur.nom)}</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.4;">${echapperHtml(question)}</p></div>`;
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    setTimeout(() => {
-        let reponse = "";
-        const qLower = question.toLowerCase();
-        const prenom = utilisateur.nom ? utilisateur.nom.split(' ')[0] : 'ami';
+    // Indicateur de frappe
+    const loadingId = 'elaws-loading-' + Date.now();
+    chatBox.innerHTML += `<div id="${loadingId}" style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS AI</strong><div class="typing-indicator" style="margin-top:6px;"><span></span><span></span><span></span></div></div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-        if (qLower.includes('bonjour') || qLower.includes('salut') || qLower.includes('hello') || qLower.includes('hi')) {
-            reponse = `Bonjour ${prenom} ! Je suis ELAWS, votre assistant quantique. Que puis-je faire pour vous aujourd'hui ?`;
-        } else if (qLower.includes('merci') || qLower.includes('thanks')) {
-            reponse = `Avec plaisir, ${prenom}. Je reste disponible dès que vous en avez besoin.`;
-        } else if (qLower.includes('contact') || qLower.includes('appel') || qLower.includes('call') || qLower.includes('téléph')) {
-            reponse = `Pour appeler ou gérer vos contacts, utilisez les onglets « Contacts » et « Appels VoIP ». Votre identifiant : ${utilisateur.telephone}.`;
-        } else if (qLower.includes('voyage') || qLower.includes('visa') || qLower.includes('travel')) {
-            reponse = `Le module Voyage & Visa peut vous aider à préparer un déplacement. Indiquez une destination dans l'onglet dédié pour une analyse rapide.`;
-        } else if (qLower.includes('note') || qLower.includes('idée') || qLower.includes('écrire')) {
-            reponse = `Vous pouvez enregistrer des notes dans l'onglet « Notes & Outils ». Elles restent stockées localement sur votre appareil.`;
-        } else if (qLower.includes('aide') || qLower.includes('help') || qLower.includes('que peux') || qLower.includes('fonction') || qLower.includes('capable')) {
-            reponse = `Je peux vous aider avec : appels sécurisés, contacts, notes, stratégie, voyage, et bien plus. EVAT Continuum s'adapte à tous vos besoins, où que vous soyez.`;
-        } else if (qLower.includes('qui es') || qLower.includes('qui êtes') || qLower.includes('what are you')) {
-            reponse = `Je suis ELAWS AI, l'assistant intégré à EVAT Continuum. Mon rôle est de simplifier votre organisation, vos communications et vos décisions au quotidien.`;
-        } else {
-            reponse = `J'ai bien reçu : « ${question} ». En tant qu'assistant de ${prenom}, je note votre demande. Utilisez les modules de l'application ou précisez ce dont vous avez besoin.`;
-        }
+    let reponse = '';
+    try {
+        reponse = await appelerIAMondiale(question, utilisateur);
+    } catch (err) {
+        reponse = reponseLocaleElaws(question, utilisateur);
+    }
 
-        chatBox.innerHTML += `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS AI</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.4;">${reponse}</p></div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }, 180);
+    // Mémoriser l'historique
+    elawsHistory.push({ role: 'user', content: question });
+    elawsHistory.push({ role: 'assistant', content: reponse });
+    if (elawsHistory.length > 20) elawsHistory = elawsHistory.slice(-16);
+
+    // Remplacer le loading par la réponse
+    const loadingEl = document.getElementById(loadingId);
+    const reponseHtml = `<div style="background:rgba(56,189,248,0.1); border:1px solid var(--border-color); padding:10px; border-radius:10px;"><strong style="color:var(--accent); font-size:12px;">🤖 ELAWS AI</strong><p style="margin:4px 0 0 0; font-size:12.5px; line-height:1.45; white-space:pre-wrap;">${echapperHtml(reponse)}</p></div>`;
+    if (loadingEl) {
+        loadingEl.outerHTML = reponseHtml;
+    } else {
+        chatBox.innerHTML += reponseHtml;
+    }
+    chatBox.scrollTop = chatBox.scrollHeight;
+    elawsBusy = false;
 }
 
 function toggleMenu(e) {
@@ -866,6 +964,7 @@ function fermerAppelTotalLocally() {
     pendingOfferData = null;
 }
 
+
 // ========== THÈME CLAIR / SOMBRE ==========
 function basculerTheme() {
     const html = document.documentElement;
@@ -912,20 +1011,17 @@ function appliquerThemeSauvegarde() {
     }
 
     function getParticleColor() {
-        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        return isLight ? '2, 132, 199' : '56, 189, 248';
+        return document.documentElement.getAttribute('data-theme') === 'light' ? '2, 132, 199' : '56, 189, 248';
     }
 
     function createParticles() {
-        const count = Math.min(60, Math.floor((w * h) / 18000));
+        const count = Math.min(55, Math.floor((w * h) / 18000));
         particles = [];
         for (let i = 0; i < count; i++) {
             particles.push({
-                x: Math.random() * w,
-                y: Math.random() * h,
+                x: Math.random() * w, y: Math.random() * h,
                 r: Math.random() * 2 + 0.5,
-                vx: (Math.random() - 0.5) * 0.4,
-                vy: (Math.random() - 0.5) * 0.4,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
                 alpha: Math.random() * 0.5 + 0.15
             });
         }
@@ -936,26 +1032,22 @@ function appliquerThemeSauvegarde() {
         const rgb = getParticleColor();
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            if (p.x < 0) p.x = w;
-            if (p.x > w) p.x = 0;
-            if (p.y < 0) p.y = h;
-            if (p.y > h) p.y = 0;
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+            if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(' + rgb + ', ' + p.alpha + ')';
+            ctx.fillStyle = 'rgba(' + rgb + ',' + p.alpha + ')';
             ctx.fill();
             for (let j = i + 1; j < particles.length; j++) {
                 const q = particles[j];
-                const dx = p.x - q.x;
-                const dy = p.y - q.y;
+                const dx = p.x - q.x, dy = p.y - q.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < 120) {
                     ctx.beginPath();
                     ctx.moveTo(p.x, p.y);
                     ctx.lineTo(q.x, q.y);
-                    ctx.strokeStyle = 'rgba(' + rgb + ', ' + (0.12 * (1 - dist / 120)) + ')';
+                    ctx.strokeStyle = 'rgba(' + rgb + ',' + (0.12 * (1 - dist / 120)) + ')';
                     ctx.lineWidth = 0.6;
                     ctx.stroke();
                 }
@@ -965,29 +1057,24 @@ function appliquerThemeSauvegarde() {
     }
 
     function start() {
-        resize();
-        createParticles();
+        resize(); createParticles();
         if (animId) cancelAnimationFrame(animId);
         draw();
     }
-
     window._particlesInit = start;
     window.addEventListener('resize', function() { resize(); createParticles(); });
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start);
-    } else {
-        start();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
 })();
 
-// LOGIQUE CRITIQUE DE GESTION DE LA PAGE D'ACCUEIL
+// LOGIQUE PAGE D'ACCUEIL
 document.addEventListener('DOMContentLoaded', () => {
     appliquerThemeSauvegarde();
     const welcomeModal = document.getElementById('welcomeModal');
     if (!utilisateur || !utilisateur.nom || !utilisateur.telephone) {
-        if(welcomeModal) welcomeModal.style.display = 'flex';
+        if (welcomeModal) welcomeModal.style.display = 'flex';
     } else {
-        if(welcomeModal) welcomeModal.style.display = 'none';
+        if (welcomeModal) welcomeModal.style.display = 'none';
         appliquerInfosProfil();
         afficherContacts();
     }
