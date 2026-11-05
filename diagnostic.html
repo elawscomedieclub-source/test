@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Diagnostic de connexion</title>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5;background:#F8F5E8;color:#1D2A21;padding:20px;max-width:720px;margin:0 auto}
+h1{font-size:1.5rem;margin:8px 0}
+p{margin:8px 0}
+button{font:inherit;font-weight:650;padding:12px 20px;border-radius:999px;border:0;background:#3A7650;color:#fff;margin:6px 6px 6px 0;min-height:46px}
+button[disabled]{opacity:.5}
+ul{list-style:none;padding:0;margin:14px 0}
+li{padding:10px 12px;border-radius:10px;margin-bottom:6px;background:#fff;border:1px solid #D9D6C3;word-break:break-word}
+li.ok{border-left:6px solid #2F7A44}
+li.ko{border-left:6px solid #B0392A;background:#FBECE9}
+textarea{width:100%;min-height:220px;font:12px/1.4 ui-monospace,Menlo,monospace;padding:10px;border-radius:10px;border:1px solid #D9D6C3;box-sizing:border-box}
+.muted{color:#59665D;font-size:.92rem}
+</style>
+</head>
+<body>
+<h1>Diagnostic de connexion</h1>
+<p>Cette page teste, un par un, les appels que le site fait vers votre base de données, et note le temps de chaque réponse. Elle ne modifie rien.</p>
+<p class="muted">Touchez « Lancer le test » et attendez la fin (jusqu'à 3 minutes si le réseau est lent). Si vous vous êtes connecté à l'espace équipe sur cette adresse, les appels de l'équipe seront testés aussi.</p>
+<button id="go">Lancer le test</button><button id="copy" hidden>Copier le rapport</button>
+<div style="margin:14px 0;padding:12px;border:1px solid #D9D6C3;border-radius:12px;background:#fff">
+<strong>Tester la connexion de l'équipe</strong>
+<p class="muted">Saisissez l'identifiant et le mot de passe que vous utilisez à l'espace équipe. Ils sont envoyés uniquement à votre base, comme sur le site, et ne figurent pas dans le rapport.</p>
+<input id="lg" placeholder="Identifiant (ex. admin)" autocapitalize="off" autocomplete="username" style="width:100%;box-sizing:border-box;padding:12px;margin:4px 0;border:1px solid #D9D6C3;border-radius:10px;font:inherit">
+<input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:12px;margin:4px 0;border:1px solid #D9D6C3;border-radius:10px;font:inherit">
+<button id="gologin">Tester la connexion</button>
+</div>
+<ul id="res"></ul>
+<p id="end" class="muted" hidden>Test terminé. Touchez « Copier le rapport », puis collez-le dans votre message. Si la copie ne marche pas, sélectionnez le texte ci-dessous.</p>
+<textarea id="rep" readonly hidden></textarea>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  var ul=document.getElementById('res'),rep=document.getElementById('rep'),go=document.getElementById('go'),cp=document.getElementById('copy'),end=document.getElementById('end');
+  var lines=[];
+  function line(ok,name,ms,detail){
+    lines.push((ok?'OK    ':'ECHEC ')+'| '+name+' | '+ms+' ms'+(detail?' | '+detail:''));
+    var li=document.createElement('li');li.className=ok?'ok':'ko';
+    li.textContent=(ok?'✓ ':'✗ ')+name+' : '+ms+' ms'+(detail?' ('+detail+')':'');
+    ul.appendChild(li);
+  }
+  function withTimeout(p,ms){
+    ms=ms||25000;
+    return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error('pas de réponse après '+(ms/1000)+' s'))},ms)})]);
+  }
+  async function step(name,fn){
+    var t=Date.now();
+    try{var d=await withTimeout(fn());line(true,name,Date.now()-t,d||'')}
+    catch(e){line(false,name,Date.now()-t,String((e&&e.message)||e).slice(0,220))}
+  }
+  function cnt(r){if(r.error)throw new Error(r.error.message);return (r.data&&r.data.length!=null)?r.data.length+' ligne(s)':'ok'}
+  async function staffBlock(sb,session){
+      var since=new Date(Date.now()-8*864e5).toISOString();
+      var T={
+        'Profil de l\'équipe':function(){return sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle().then(function(r){if(r.error)throw new Error(r.error.message);return r.data?(r.data.role+', actif='+r.data.active):'aucun profil'})},
+        'Commandes (8 jours)':function(){return sb.from('orders').select('*, order_items(*), order_events(*)').gte('created_at',since).order('created_at',{ascending:false}).then(cnt)},
+        'Stocks':function(){return sb.from('stock_items').select('*').order('name').then(cnt)},
+        'Clients':function(){return sb.from('clients').select('*').order('name').then(cnt)},
+        'Mouvements de crédit':function(){return sb.from('credit_movements').select('*').order('created_at',{ascending:false}).limit(500).then(cnt)},
+        'Comptes de l\'équipe':function(){return sb.from('profiles').select('*').order('created_at').then(cnt)},
+        'Journal d\'activité':function(){return sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(120).then(cnt)}
+      };
+      for(var k in T){await step(k,T[k])}
+      var t0=Date.now();
+      try{
+        await withTimeout(Promise.all([
+          sb.from('settings').select('*').eq('id',1).single(),sb.from('payment_methods').select('*'),sb.from('dishes').select('*'),sb.from('menu_du_jour').select('*').eq('id',1).single(),sb.from('news').select('*'),
+          sb.from('orders').select('*, order_items(*), order_events(*)').gte('created_at',since),sb.from('stock_items').select('*'),sb.from('clients').select('*'),sb.from('credit_movements').select('*').limit(500),sb.from('profiles').select('*'),sb.from('activity_log').select('*').limit(120)
+        ]),60000);
+        line(true,'Chargement simultané (comme l\'application)',Date.now()-t0,'');
+      }catch(e){line(false,'Chargement simultané (comme l\'application)',Date.now()-t0,String((e&&e.message)||e).slice(0,200))}
+  }
+  async function run(){
+    go.disabled=true;ul.innerHTML='';lines=[];rep.hidden=true;cp.hidden=true;end.hidden=true;
+    var c=navigator.connection||{};
+    lines.push('Cantine du Quartier : diagnostic du '+new Date().toLocaleString('fr-FR'));
+    lines.push('Réseau : en ligne='+navigator.onLine+', type='+(c.effectiveType||'inconnu')+', débit='+(c.downlink||'?')+' Mb/s, latence='+(c.rtt||'?')+' ms');
+    lines.push('Appareil : '+navigator.userAgent.slice(0,120));
+    lines.push('');
+    var cfg=window.CANTINE_CONFIG;
+    if(!cfg){line(false,'Fichier config.js',0,'absent ou vide : le site ne sait pas à quelle base se connecter');finish();return}
+    line(true,'Fichier config.js',0,'lu, projet '+String(cfg.url).replace('https://','').split('.')[0]);
+    if(typeof supabase==='undefined'){line(false,'Bibliothèque de connexion (jsdelivr)',0,'non chargée : réseau trop lent ou site bloqué');finish();return}
+    line(true,'Bibliothèque de connexion (jsdelivr)',0,'chargée');
+    var sb=supabase.createClient(cfg.url,cfg.anonKey);
+    await step('Accès brut au serveur',async function(){var r=await fetch(cfg.url+'/rest/v1/?apikey='+encodeURIComponent(cfg.anonKey));return 'HTTP '+r.status});
+    await step('Réglages (settings)',function(){return sb.from('settings').select('*').eq('id',1).single().then(function(r){if(r.error)throw new Error(r.error.message);return r.data.name})});
+    await step('Plats actifs',function(){return sb.from('dishes').select('*').eq('active',true).then(cnt)});
+    await step('Moyens de paiement',function(){return sb.from('payment_methods').select('*').then(cnt)});
+    await step('Menu du jour',function(){return sb.from('menu_du_jour').select('*').then(cnt)});
+    await step('Actualités',function(){return sb.from('news').select('*').then(cnt)});
+    var session=null;
+    await step('Session de connexion',async function(){var r=await sb.auth.getSession();session=r.data&&r.data.session;return session?'connecté':'non connecté (normal si vous ne vous êtes pas connecté sur cette adresse)'});
+    if(session){await staffBlock(sb,session)}
+    finish();
+  }
+  async function loginTest(){
+    var cfg=window.CANTINE_CONFIG;go.disabled=true;ul.innerHTML='';lines=[];rep.hidden=true;cp.hidden=true;end.hidden=true;
+    lines.push('Cantine du Quartier : test de connexion du '+new Date().toLocaleString('fr-FR'));lines.push('Adresse du site : '+location.origin);lines.push('');
+    if(!cfg||typeof supabase==='undefined'){line(false,'Prérequis',0,'config.js ou bibliothèque de connexion indisponible');finish();return}
+    var sb=supabase.createClient(cfg.url,cfg.anonKey);
+    var id=document.getElementById('lg').value.trim().toLowerCase(),pw=document.getElementById('pw').value;
+    if(!id||!pw){line(false,'Saisie',0,'identifiant ou mot de passe vide');finish();return}
+    var session=null;
+    await step('Connexion avec l\'identifiant « '+id+' »',async function(){
+      var r=await sb.auth.signInWithPassword({email:id+'@staff.cantine.local',password:pw});
+      if(r.error)throw new Error(r.error.message+(r.error.status?' (code '+r.error.status+')':''));
+      session=r.data.session;return 'accepté'});
+    if(session){
+      await step('Lecture du profil de l\'équipe',function(){return sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle().then(function(r){if(r.error)throw new Error(r.error.message);return r.data?('rôle '+r.data.role+', actif='+r.data.active):'AUCUN PROFIL pour cet utilisateur : la ligne de la table profiles manque'})});
+      await staffBlock(sb,session);
+    }
+    finish();
+  }
+  function finish(){
+    rep.value=lines.join('\n');rep.hidden=false;cp.hidden=false;end.hidden=false;go.disabled=false;go.textContent='Relancer le test';
+  }
+  go.onclick=run;
+  document.getElementById('gologin').onclick=loginTest;
+  cp.onclick=function(){
+    var done=function(){cp.textContent='Rapport copié'};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(rep.value).then(done,function(){rep.select();document.execCommand('copy');done()})}
+    else{rep.select();try{document.execCommand('copy')}catch(e){}done()}
+  };
+})();
+</script>
+</body>
+</html>

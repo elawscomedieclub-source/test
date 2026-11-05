@@ -1,39 +1,40 @@
 {
-  "id": "./index.html",
-  "name": "EVAT | ELAWS Quantum Continuum",
-  "short_name": "EVAT",
-  "description": "Réseau quantique d'opérateurs — messagerie, appels P2P, GPS, IA ELAWS",
+  "id": "/",
+  "name": "Cantine du Quartier, équipe",
+  "short_name": "Équipe",
+  "description": "Gestion des commandes, des plats et des stocks de la cantine.",
   "lang": "fr",
-  "dir": "ltr",
-  "start_url": "./index.html",
+  "start_url": "./#/admin",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#040a1a",
-  "theme_color": "#040a1a",
-  "categories": [
-    "communication",
-    "business",
-    "productivity"
-  ],
+  "background_color": "#1F3328",
+  "theme_color": "#1F3328",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mode cuisine",
+      "url": "./#/admin/cuisine"
     },
     {
-      "src": "icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "name": "Commandes",
+      "url": "./#/admin/commandes"
+    },
+    {
+      "name": "Plats et menu",
+      "url": "./#/admin/plats"
     }
   ]
 }
