@@ -1,13 +1,39 @@
 {
-  "name": "EVAT | ELAWS Quantum",
+  "id": "./index.html",
+  "name": "EVAT | ELAWS Quantum Continuum",
   "short_name": "EVAT",
-  "description": "EVAT Continuum — ELAWS Quantum. Communications, IA et outils pour tous.",
+  "description": "Réseau quantique d'opérateurs — messagerie, appels P2P, GPS, IA ELAWS",
+  "lang": "fr",
+  "dir": "ltr",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
+  "background_color": "#040a1a",
+  "theme_color": "#040a1a",
+  "categories": [
+    "communication",
+    "business",
+    "productivity"
+  ],
   "icons": [
-    { "src": "logo_evat.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
